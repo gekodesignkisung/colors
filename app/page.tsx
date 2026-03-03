@@ -1,6 +1,5 @@
 'use client';
 
-import Header from './components/Header';
 import BaseColorInput from './components/sidebar/BaseColorInput';
 import TokenList from './components/sidebar/TokenList';
 import PreviewCanvas from './components/preview/PreviewCanvas';
@@ -11,27 +10,22 @@ export default function Home() {
   const selectedTokenId = useColorStore(s => s.selectedTokenId);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
-      <Header />
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#dddddf', gap: 1 }}>
+      {/* Left panel — Key Colors (280px) */}
+      <aside style={{ width: 280, flexShrink: 0 }} className="flex flex-col bg-white overflow-hidden">
+        <BaseColorInput />
+      </aside>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Base Colors panel */}
-        <aside className="w-52 flex flex-col border-r border-gray-200 bg-white shrink-0 overflow-hidden">
-          <BaseColorInput />
-        </aside>
+      {/* Middle panel — Generated Colors (360px) */}
+      <aside style={{ width: 360, flexShrink: 0 }} className="flex flex-col bg-white overflow-hidden">
+        <TokenList />
+      </aside>
 
-        {/* Generated Tokens panel */}
-        <aside className="w-64 flex flex-col border-r border-gray-200 bg-white shrink-0 overflow-hidden">
-          <TokenList />
-        </aside>
+      {/* Right panel — Preview (fills rest) */}
+      <main className="flex-1 flex flex-col bg-white overflow-hidden">
+        <PreviewCanvas />
+      </main>
 
-        {/* Main preview */}
-        <main className="flex-1 overflow-hidden">
-          <PreviewCanvas />
-        </main>
-      </div>
-
-      {/* Token edit popup */}
       {selectedTokenId && <TokenEditPopup />}
     </div>
   );
