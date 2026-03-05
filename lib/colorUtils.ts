@@ -138,3 +138,86 @@ export function normalizeHex(hex: string): string {
   }
   return '#' + hex.toLowerCase();
 }
+
+// ─── OKLCH Color Space ───────────────────────────────────────────────────────
+// Perceptually uniform: same L = same visual brightness across all hues.
+
+function _linearize(v: number): number {
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+function _delinearize(v: number): number {
+  return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+}
+
+/** HEX → OKLCH  (L: 0–1, C: 0–~0.4, H: 0–360°) */
+export function hexToOKLCH(hex: string): { l: number; c: number; h: number } {
+  const r$ = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!r$) return { l: 0.5, c: 0, h: 0 };
+  const r = _linearize(parseInt(r$[1], 16) / 255);
+  const g = _linearize(parseInt(r$[2], 16) / 255);
+  const b = _linearize(parseInt(r$[3], 16) / 255);
+  // Linear sRGB → LMS
+  const ll = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+  const ml = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+  const sl = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+  const l_ = Math.cbrt(ll);
+  const m_ = Math.cbrt(ml);
+  const s_ = Math.cbrt(sl);
+  // LMS' → OKLab
+  const L  =  0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+  const a  =  1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+  const bv =  0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+  const C = Math.sqrt(a * a + bv * bv);
+  let H = (Math.atan2(bv, a) * 180) / Math.PI;
+  if (H < 0) H += 360;
+  return { l: L, c: C, h: H };
+}
+
+/** OKLCH → HEX (clamps out-of-gamut values) */
+export function oklchToHex(l: number, c: number, h: number): string {
+  const a  = c * Math.cos((h * Math.PI) / 180);
+  const bv = c * Math.sin((h * Math.PI) / 180);
+  // OKLab → LMS'
+  const l_ = l + 0.3963377774 * a + 0.2158037573 * bv;
+  const m_ = l - 0.1055613458 * a - 0.0638541728 * bv;
+  const s_ = l - 0.0894841775 * a - 1.2914855480 * bv;
+  const ll = l_ * l_ * l_;
+  const ml = m_ * m_ * m_;
+  const sl = s_ * s_ * s_;
+  // LMS → Linear sRGB
+  let r =  4.0767416621 * ll - 3.3077115913 * ml + 0.2309699292 * sl;
+  let g = -1.2684380046 * ll + 2.6097574011 * ml - 0.3413193965 * sl;
+  let b = -0.0041960863 * ll - 0.7034186147 * ml + 1.7076147010 * sl;
+  // Gamma + clamp
+  r = Math.max(0, Math.min(1, _delinearize(r)));
+  g = Math.max(0, Math.min(1, _delinearize(g)));
+  b = Math.max(0, Math.min(1, _delinearize(b)));
+  const toH = (n: number) => Math.round(n * 255).toString(16).padStart(2, '0');
+  return `#${toH(r)}${toH(g)}${toH(b)}`;
+}
+
+export function setLightnessOKLCH(hex: string, l01: number): string {
+  const ok = hexToOKLCH(hex);
+  return oklchToHex(Math.max(0, Math.min(1, l01)), ok.c, ok.h);
+}
+export function lightenOKLCH(hex: string, amount: number): string {
+  const ok = hexToOKLCH(hex);
+  return oklchToHex(Math.min(1, ok.l + amount / 100), ok.c, ok.h);
+}
+export function darkenOKLCH(hex: string, amount: number): string {
+  const ok = hexToOKLCH(hex);
+  return oklchToHex(Math.max(0, ok.l - amount / 100), ok.c, ok.h);
+}
+export function setSaturationOKLCH(hex: string, s: number): string {
+  // s: 0–100 maps to chroma 0–0.37 (approx max natural chroma)
+  const ok = hexToOKLCH(hex);
+  return oklchToHex(ok.l, (s / 100) * 0.37, ok.h);
+}
+export function colorShiftOKLCH(hex: string, degrees: number): string {
+  const ok = hexToOKLCH(hex);
+  return oklchToHex(ok.l, ok.c, (ok.h + degrees) % 360);
+}
+export function invertOKLCH(hex: string): string {
+  const ok = hexToOKLCH(hex);
+  return oklchToHex(1 - ok.l, ok.c, ok.h);
+}

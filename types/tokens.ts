@@ -1,9 +1,5 @@
-export interface BaseColors {
-  primary: string;
-  secondary: string;
-  tertiary: string;
-  neutral: string;
-}
+// Dynamic key-value map — supports user-added color groups
+export type BaseColors = Record<string, string>;
 
 export type TokenOperation =
   | 'source'
@@ -12,10 +8,12 @@ export type TokenOperation =
   | 'darken'
   | 'setLightness'
   | 'setSaturation'
+  | 'colorShift'
+  | 'invert'
   | 'manual'
   | 'fixed';
 
-export type TokenSource = keyof BaseColors | 'error' | 'fixed';
+export type TokenSource = string;
 
 export interface TokenRule {
   operation: TokenOperation;
@@ -31,16 +29,11 @@ export interface DesignToken {
   color: string;
   rule: TokenRule;
   isManual: boolean;
+  isFormulaOverride?: boolean; // user customized the formula rule
 }
 
-export type TokenGroup =
-  | 'Primary'
-  | 'Secondary'
-  | 'Tertiary'
-  | 'Surface'
-  | 'Outline'
-  | 'Background'
-  | 'Error';
+// TokenGroup is now a free string (group key, e.g. 'primary', 'surface', 'custom-1')
+export type TokenGroup = string;
 
 export type PreviewTab = 'page' | 'components' | 'modals' | 'typography';
 

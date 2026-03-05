@@ -2,24 +2,36 @@
 
 import { useState } from 'react';
 import { useColorStore } from '@/store/colorStore';
-import { TokenGroup } from '@/types/tokens';
 import TokenCard from './TokenCard';
+import { ColorShape } from '@/app/components/ColorShape';
 
-const GROUP_ORDER: TokenGroup[] = [
-  'Primary', 'Secondary', 'Tertiary', 'Background', 'Surface', 'Outline', 'Error',
-];
+const NEUTRAL_DERIVED = ['background', 'surface', 'outline'];
+const FIXED_GROUPS = ['error'];
+const NEUTRAL_DERIVED_LABELS: Record<string, string> = {
+  background: 'Background',
+  surface: 'Surface',
+  outline: 'Outline',
+  error: 'Error',
+};
 
 export default function TokenList() {
   const tokens = useColorStore(s => s.tokens);
-  const { isDark, toggleDark } = useColorStore();
-  const [collapsed, setCollapsed] = useState<Set<TokenGroup>>(new Set());
+  const { isDark, toggleDark, groupOrder, groupLabels } = useColorStore();
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const grouped = GROUP_ORDER.map(group => ({
-    group,
-    tokens: tokens.filter(t => t.group === group),
-  }));
+  // Build display order: base groups (non-neutral) → neutral-derived → error → extra custom groups
+  const allTokenGroups = [...new Set(tokens.map(t => t.group))];
+  const baseGroupsInOrder = groupOrder.filter(k => k !== 'neutral' && allTokenGroups.includes(k));
+  const neutralDerived = NEUTRAL_DERIVED.filter(k => allTokenGroups.includes(k));
+  const fixedGroups = FIXED_GROUPS.filter(k => allTokenGroups.includes(k));
+  const knownSet = new Set([...groupOrder, ...NEUTRAL_DERIVED, ...FIXED_GROUPS]);
+  const extraGroups = allTokenGroups.filter(k => !knownSet.has(k));
+  const orderedGroups = [...baseGroupsInOrder, ...neutralDerived, ...fixedGroups, ...extraGroups];
 
-  const toggle = (group: TokenGroup) => {
+  const getGroupLabel = (key: string) =>
+    groupLabels[key] ?? NEUTRAL_DERIVED_LABELS[key] ?? (key.charAt(0).toUpperCase() + key.slice(1));
+
+  const toggle = (group: string) => {
     setCollapsed(prev => {
       const next = new Set(prev);
       next.has(group) ? next.delete(group) : next.add(group);
@@ -43,7 +55,6 @@ export default function TokenList() {
             onClick={() => { if (isDark) toggleDark(); }}
             className={`flex items-center justify-center w-8 h-9 transition-colors ${!isDark ? 'bg-white/20' : ''}`}
           >
-            {/* Sun */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="12" cy="12" r="4" stroke="white" strokeWidth="2"/>
               <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="white" strokeWidth="2" strokeLinecap="round"/>
@@ -57,7 +68,6 @@ export default function TokenList() {
             onClick={() => { if (!isDark) toggleDark(); }}
             className={`flex items-center justify-center w-8 h-9 transition-colors ${isDark ? 'bg-white/20' : ''}`}
           >
-            {/* Moon */}
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path d="M10 7A5 5 0 014 1a5 5 0 100 10 5 5 0 006-4z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -67,9 +77,11 @@ export default function TokenList() {
 
       {/* Token list */}
       <div className="flex-1 overflow-y-auto">
-        {grouped.map(({ group, tokens: groupTokens }) => {
+        {orderedGroups.map((group) => {
+          const groupTokens = tokens.filter(t => t.group === group);
           if (groupTokens.length === 0) return null;
           const isCollapsed = collapsed.has(group);
+          const displayLabel = getGroupLabel(group);
 
           return (
             <div key={group}>
@@ -80,7 +92,7 @@ export default function TokenList() {
                 className="w-full flex items-center justify-between h-[60px] px-5 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center gap-1">
-                  <span className="font-semibold text-sm text-[#333333]">{group}</span>
+                  <span className="font-semibold text-sm text-[#333333]">{displayLabel}</span>
                   <svg
                     width="6" height="4" viewBox="0 0 6 4" fill="none"
                     className={`transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`}
@@ -94,11 +106,7 @@ export default function TokenList() {
                 {/* Color swatches (up to 4) */}
                 <div className="flex items-center gap-1">
                   {groupTokens.slice(0, 4).map(t => (
-                    <div
-                      key={t.id}
-                      className="w-4 h-4 rounded-full border border-black/[0.08]"
-                      style={{ backgroundColor: t.color }}
-                    />
+                    <ColorShape key={t.id} color={t.color} size={16} />
                   ))}
                 </div>
               </button>
@@ -117,3 +125,4 @@ export default function TokenList() {
     </div>
   );
 }
+
