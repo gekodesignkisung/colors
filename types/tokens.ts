@@ -20,6 +20,11 @@ export interface TokenRule {
   source: TokenSource;
   param?: number;
   description: string;
+  // Naming-based derivation info (set by generateTokensFromNaming)
+  namingVariant?: string;
+  namingState?: string;
+  namingType?: string;
+  stateAmount?: number; // hover lighten %, pressed darken %
 }
 
 export interface DesignToken {
@@ -40,4 +45,11 @@ export type PreviewTab = 'page' | 'components' | 'modals' | 'typography';
 export interface ExportFormat {
   css: string;
   json: Record<string, string>;
+}
+
+export interface GenerateRange { min: number; max: number; }
+export interface GenerateRule {
+  h: GenerateRange;
+  s: GenerateRange;
+  l: GenerateRange;
 }

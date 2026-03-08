@@ -93,6 +93,14 @@ export function getOnColor(hex: string): string {
   return contrastWhite >= contrastDark ? white : dark;
 }
 
+// OKLCH-based on-color: preserves source hue with subtle tint
+export function getOnColorOKLCH(hex: string): string {
+  const { l, c, h } = hexToOKLCH(hex);
+  const targetL = l > 0.5 ? 0.15 : 0.95;
+  const targetC = Math.min(c * 0.12, 0.025); // hue 기색만 살리고 채도는 최소화
+  return oklchToHex(targetL, targetC, h);
+}
+
 // Set specific lightness, preserve h+s
 export function setLightness(hex: string, l: number): string {
   const hsl = hexToHSL(hex);
@@ -117,11 +125,20 @@ export function darken(hex: string, amount: number): string {
   return hslToHex(hsl.h, hsl.s, Math.max(0, hsl.l - amount));
 }
 
-// Generate a random vibrant color
+// Generate a random vibrant color (OKLCH — 지각적으로 균일한 밝기/채도)
 export function generateRandomColor(): string {
-  const h = Math.floor(Math.random() * 360);
-  const s = Math.floor(Math.random() * 40) + 40; // 40-80%
-  const l = Math.floor(Math.random() * 20) + 35; // 35-55%
+  const h = Math.random() * 360;
+  const l = 0.38 + Math.random() * 0.24; // 0.38~0.62: 너무 어둡거나 밝지 않은 중간 톤
+  const c = 0.08 + Math.random() * 0.14; // 0.08~0.22: 자연 채도 범위
+  return oklchToHex(l, c, h);
+}
+
+// Generate a random color within specified HSL ranges
+export function generateRandomColorInRange(rule: { h: { min: number; max: number }; s: { min: number; max: number }; l: { min: number; max: number } }): string {
+  const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const h = rand(Math.max(0, rule.h.min), Math.min(360, rule.h.max));
+  const s = rand(Math.max(0, rule.s.min), Math.min(100, rule.s.max));
+  const l = rand(Math.max(0, rule.l.min), Math.min(100, rule.l.max));
   return hslToHex(h, s, l);
 }
 
@@ -137,6 +154,61 @@ export function normalizeHex(hex: string): string {
     hex = hex.split('').map(c => c + c).join('');
   }
   return '#' + hex.toLowerCase();
+}
+
+// ─── HSV Color Space ─────────────────────────────────────────────────────────
+
+export function hslToHSV(h: number, s: number, l: number): { h: number; s: number; v: number } {
+  s /= 100;
+  l /= 100;
+  const v = l + s * Math.min(l, 1 - l);
+  const newS = v === 0 ? 0 : 2 * (1 - l / v);
+  return { h, s: Math.round(newS * 100), v: Math.round(v * 100) };
+}
+
+export function hsvToHSL(h: number, s: number, v: number): { h: number; s: number; l: number } {
+  h = h % 360;
+  s /= 100;
+  v /= 100;
+  const l = v * (1 - s / 2);
+  const newS = l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l);
+  return { h, s: Math.round(newS * 100), l: Math.round(l * 100) };
+}
+
+export function hsvToHex(h: number, s: number, v: number): string {
+  h = h % 360;
+  s /= 100;
+  v /= 100;
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r = 0, g = 0, b = 0;
+  if (0 <= h && h < 60)        { r = c; g = x; b = 0; }
+  else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+  else if (120 <= h && h < 180){ r = 0; g = c; b = x; }
+  else if (180 <= h && h < 240){ r = 0; g = x; b = c; }
+  else if (240 <= h && h < 300){ r = x; g = 0; b = c; }
+  else if (300 <= h && h < 360){ r = c; g = 0; b = x; }
+  const toHex = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+export function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
 // ─── OKLCH Color Space ───────────────────────────────────────────────────────

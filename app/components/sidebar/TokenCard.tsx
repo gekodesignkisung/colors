@@ -19,22 +19,30 @@ export default function TokenCard({ token }: { token: DesignToken }) {
     <button
       type="button"
       onClick={() => setSelectedToken(isSelected ? null : token.id)}
-      className={`w-full flex items-center text-left h-[38px] px-5 transition-colors
+      className={`w-full flex items-center text-left h-[46px] px-5 transition-colors
         ${isSelected ? 'bg-[#f0eeff] outline outline-2 outline-[#8b6fe8] -outline-offset-2' : 'bg-white hover:bg-gray-50'}
       `}
     >
       {/* 30×30 squircle swatch */}
-      <ColorShape color={token.color} size={30} className="shrink-0" />
+      <ColorShape
+        color={token.color}
+        size={40}
+        className="shrink-0"
+        borderColor={isSelected ? '#8b6fe8' : undefined}
+        borderWidth={isSelected ? 2 : undefined}
+      />
 
-      {/* Name + color value */}
-      <div className="pl-[10px] flex items-center gap-1 flex-1 min-w-0">
-        <span className="font-semibold text-[13px] text-[#333333] whitespace-nowrap">
-          {token.name}
-        </span>
-        {token.isManual && (
-          <span className="text-[10px] text-[#8b6fe8]">●</span>
-        )}
-        <span className={`font-mono truncate ${useOklch ? 'text-[10px] text-[#a78bfa]' : 'text-xs text-[#999999]'}`}>
+      {/* Name + color value (stacked) */}
+      <div className="pl-[10px] flex flex-col justify-center flex-1 min-w-0">
+        <div className="flex items-center gap-1">
+          <span className="font-semibold text-[13px] text-[#333333] whitespace-nowrap">
+            {token.name}
+          </span>
+          {token.isManual && (
+            <span className="text-[10px] text-[#8b6fe8]">●</span>
+          )}
+        </div>
+        <span className={`font-mono truncate ${useOklch ? 'text-[10px] text-[#a78bfa]' : 'text-[11px] text-[#999999]'}`}>
           {colorLabel}
         </span>
       </div>

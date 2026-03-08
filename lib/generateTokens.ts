@@ -1,6 +1,6 @@
 import { BaseColors, DesignToken, TokenGroup, TokenRule } from '@/types/tokens';
 import {
-  hexToHSL, hslToHex, getOnColor, setLightness, setSaturation, lighten, darken,
+  hexToHSL, hslToHex, getOnColor, getOnColorOKLCH, setLightness, setSaturation, lighten, darken,
   hexToOKLCH, oklchToHex, setLightnessOKLCH, lightenOKLCH, darkenOKLCH,
   setSaturationOKLCH, colorShiftOKLCH, invertOKLCH,
 } from './colorUtils';
@@ -13,6 +13,129 @@ function makeToken(
   rule: TokenRule
 ): DesignToken {
   return { id, name, group, color, rule, isManual: false };
+}
+
+// ── Naming-based generation helpers ───────────────────────────────────────────
+
+function getVariantBaseColor(variant: string, base: BaseColors, isDark: boolean, useOklch: boolean): string {
+  const raw = base[variant] ?? (variant === 'danger' ? (isDark ? '#FFB4AB' : '#B3261E') : (base.primary ?? '#6750a4'));
+  if (!isDark) return raw;
+  if (useOklch) {
+    const ok = hexToOKLCH(raw);
+    return oklchToHex(Math.min(ok.l + 0.12, 0.87), ok.c, ok.h);
+  }
+  const { h, s, l } = hexToHSL(raw);
+  return hslToHex(h, Math.min(s, 80), Math.min(l + 15, 85));
+}
+
+function applyStateModifier(hex: string, state: string, useOklch: boolean): string {
+  if (state === 'hover')   return useOklch ? lightenOKLCH(hex, 8)  : lighten(hex, 8);
+  if (state === 'pressed') return useOklch ? darkenOKLCH(hex, 10)  : darken(hex, 10);
+  if (state === 'disabled') {
+    if (useOklch) {
+      const { l, h } = hexToOKLCH(hex);
+      return oklchToHex(l > 0.5 ? 0.75 : 0.35, 0.02, h);
+    }
+    const { h, l } = hexToHSL(hex);
+    return hslToHex(h, 8, l > 50 ? 70 : 45);
+  }
+  return hex;
+}
+
+function deriveTypeColor(hex: string, type: string, useOklch: boolean): string {
+  if (type === 'text' || type === 'icon') return useOklch ? getOnColorOKLCH(hex) : getOnColor(hex);
+  if (type === 'border') {
+    if (useOklch) {
+      const { l, c, h } = hexToOKLCH(hex);
+      return oklchToHex(l * 0.85, Math.min(c * 0.7, 0.15), h);
+    }
+    const { h, s, l } = hexToHSL(hex);
+    return hslToHex(h, Math.min(s * 0.7, 50), l * 0.85);
+  }
+  return hex; // background
+}
+
+export interface NamingConfig {
+  namespace: string;
+  order: string[];
+  enabled: string[];
+  values: Record<string, string[]>;
+}
+
+export function generateTokensFromNaming(
+  base: BaseColors,
+  config: NamingConfig,
+  isDark: boolean,
+  useOklch: boolean
+): DesignToken[] {
+  const enabledSet = new Set(config.enabled);
+  const GENERATIVE = ['variant', 'type', 'state'];
+  const activeDims = config.order.filter(k => GENERATIVE.includes(k) && enabledSet.has(k));
+
+  const variants = (enabledSet.has('variant') && config.values.variant?.length) ? config.values.variant : ['primary'];
+  const types    = (enabledSet.has('type')    && config.values.type?.length)    ? config.values.type    : ['background'];
+  const states   = (enabledSet.has('state')   && config.values.state?.length)   ? config.values.state   : ['default'];
+  const useNs    = enabledSet.has('namespace') && !!config.namespace;
+
+  const tokens: DesignToken[] = [];
+  for (const variant of variants) {
+    const variantBase = getVariantBaseColor(variant, base, isDark, useOklch);
+    for (const state of states) {
+      const statedColor = applyStateModifier(variantBase, state, useOklch);
+      for (const type of types) {
+        const finalColor = deriveTypeColor(statedColor, type, useOklch);
+        const parts = activeDims.map(k =>
+          k === 'variant' ? variant : k === 'type' ? type : k === 'state' ? state : ''
+        ).filter(Boolean);
+        const id = useNs ? `${config.namespace}.${parts.join('.')}` : parts.join('.');
+        const stateAmt = state === 'hover' ? 8 : state === 'pressed' ? 10 : undefined;
+        tokens.push(makeToken(id, id, variant, finalColor, {
+          operation: 'source',
+          source: variant,
+          description: `${variant} · ${type} · ${state}`,
+          namingVariant: variant,
+          namingState: state,
+          namingType: type,
+          stateAmount: stateAmt,
+        }));
+      }
+    }
+  }
+  return tokens;
+}
+
+// ── Naming-based derivation helpers (exported for UI use) ────────────────────
+
+export function getStateDescription(state: string, amount?: number): string {
+  if (state === 'hover')    return `Lighten +${amount ?? 8}%`;
+  if (state === 'pressed')  return `Darken −${amount ?? 10}%`;
+  if (state === 'disabled') return 'Desaturate (disabled)';
+  return 'No modification';
+}
+
+export function getTypeDescription(type: string): string {
+  if (type === 'text' || type === 'icon') return 'Contrast (WCAG auto)';
+  if (type === 'border') return 'Muted (−15% L, −30% C)';
+  return 'Source color';
+}
+
+export function computeNamingTokenColor(
+  variant: string, state: string, type: string,
+  base: BaseColors, isDark: boolean, useOklch: boolean,
+  stateAmount?: number,
+): string {
+  const variantBase = getVariantBaseColor(variant, base, isDark, useOklch);
+  let statedColor = variantBase;
+  if (state === 'hover') {
+    const amt = stateAmount ?? 8;
+    statedColor = useOklch ? lightenOKLCH(variantBase, amt) : lighten(variantBase, amt);
+  } else if (state === 'pressed') {
+    const amt = stateAmount ?? 10;
+    statedColor = useOklch ? darkenOKLCH(variantBase, amt) : darken(variantBase, amt);
+  } else if (state === 'disabled') {
+    statedColor = applyStateModifier(variantBase, 'disabled', useOklch);
+  }
+  return deriveTypeColor(statedColor, type, useOklch);
 }
 
 // Generate a tonal container: preserve hue, reduce saturation, push to high lightness
@@ -65,7 +188,7 @@ export function generateTokens(base: BaseColors, isDark = false, useOklch = fals
     if (useOklch) { const ok = hexToOKLCH(src.primary); return oklchToHex(Math.min(ok.l + 0.12, 0.87), ok.c, ok.h); }
     const p = hexToHSL(src.primary); return hslToHex(p.h, Math.min(p.s, 80), Math.min(p.l + 15, 85));
   })();
-  const onPrimary = getOnColor(primary);
+  const onPrimary = useOklch ? getOnColorOKLCH(primary) : getOnColor(primary);
   const primaryContainer = makeContainer(src.primary, 90, isDark, useOklch);
   const onPrimaryContainer = makeOnContainer(src.primary, isDark, useOklch);
 
@@ -75,7 +198,7 @@ export function generateTokens(base: BaseColors, isDark = false, useOklch = fals
     if (useOklch) { const ok = hexToOKLCH(src.secondary); return oklchToHex(Math.min(ok.l + 0.12, 0.85), ok.c, ok.h); }
     const s = hexToHSL(src.secondary); return hslToHex(s.h, Math.min(s.s, 70), Math.min(s.l + 15, 80));
   })();
-  const onSecondary = getOnColor(secondary);
+  const onSecondary = useOklch ? getOnColorOKLCH(secondary) : getOnColor(secondary);
   const secondaryContainer = makeContainer(src.secondary, 90, isDark, useOklch);
   const onSecondaryContainer = makeOnContainer(src.secondary, isDark, useOklch);
 
@@ -85,7 +208,7 @@ export function generateTokens(base: BaseColors, isDark = false, useOklch = fals
     if (useOklch) { const ok = hexToOKLCH(src.tertiary); return oklchToHex(Math.min(ok.l + 0.12, 0.85), ok.c, ok.h); }
     const t = hexToHSL(src.tertiary); return hslToHex(t.h, Math.min(t.s, 70), Math.min(t.l + 15, 80));
   })();
-  const onTertiary = getOnColor(tertiary);
+  const onTertiary = useOklch ? getOnColorOKLCH(tertiary) : getOnColor(tertiary);
   const tertiaryContainer = makeContainer(src.tertiary, 90, isDark, useOklch);
   const onTertiaryContainer = makeOnContainer(src.tertiary, isDark, useOklch);
 
@@ -288,7 +411,7 @@ function generateGroupTokens(key: string, hex: string, isDark: boolean, useOklch
     const { h, s, l } = hexToHSL(hex);
     color = hslToHex(h, Math.min(s, 80), Math.min(l + 15, 85));
   }
-  const onColor = getOnColor(color);
+  const onColor = useOklch ? getOnColorOKLCH(color) : getOnColor(color);
   const container = makeContainer(hex, 90, isDark, useOklch);
   const onContainer = makeOnContainer(hex, isDark, useOklch);
   const cap = key.charAt(0).toUpperCase() + key.slice(1);
@@ -316,8 +439,6 @@ export function applyRule(rule: TokenRule, base: BaseColors, isDark: boolean, us
   let sourceHex: string;
   if (rule.source === 'error') {
     sourceHex = isDark ? '#FFB4AB' : '#B3261E';
-  } else if (rule.source === 'fixed') {
-    sourceHex = '#B3261E';
   } else {
     sourceHex = base[rule.source] ?? '#000000';
   }
@@ -327,7 +448,7 @@ export function applyRule(rule: TokenRule, base: BaseColors, isDark: boolean, us
   if (useOklch) {
     switch (rule.operation) {
       case 'source':        return sourceHex;
-      case 'contrast':      return getOnColor(sourceHex);
+      case 'contrast':      return getOnColorOKLCH(sourceHex);
       case 'lighten':       return lightenOKLCH(sourceHex, p);
       case 'darken':        return darkenOKLCH(sourceHex, p);
       case 'setLightness':  return setLightnessOKLCH(sourceHex, p / 100);

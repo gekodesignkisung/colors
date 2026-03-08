@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { hexToHSL } from '@/lib/colorUtils';
 import { isValidHex, normalizeHex } from '@/lib/colorUtils';
 import { ColorShape } from '@/app/components/ColorShape';
+import ColorPicker from '@/app/components/ColorPicker';
 
 interface KeyColorEditPopupProps {
   colorKey: string;
@@ -29,9 +30,10 @@ export default function KeyColorEditPopup({
   const [hex,   setHex]   = useState(initialHex);
   const [label, setLabel] = useState(initialLabel);
   const [desc,  setDesc]  = useState(initialDescription);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerPos,  setPickerPos]  = useState<{ x: number; y: number } | null>(null);
 
-  const popupRef   = useRef<HTMLDivElement>(null);
-  const pickerRef  = useRef<HTMLInputElement>(null);
+  const popupRef    = useRef<HTMLDivElement>(null);
   const hexInputRef = useRef<HTMLInputElement>(null);
 
   // sync if parent changes (e.g. switching cards)
@@ -41,16 +43,6 @@ export default function KeyColorEditPopup({
     setDesc(initialDescription);
   }, [colorKey, initialHex, initialLabel, initialDescription]);
 
-  // close on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
 
   // close on Escape
   useEffect(() => {
@@ -61,19 +53,22 @@ export default function KeyColorEditPopup({
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
-    setHex(v);
-    if (hexInputRef.current) hexInputRef.current.value = v.toUpperCase();
+  const handlePickerChange = (newHex: string) => {
+    setHex(newHex);
+    if (hexInputRef.current) hexInputRef.current.value = newHex.toUpperCase();
+  };
+
+  const handlePickerClose = (savedHex?: string) => {
+    if (savedHex) {
+      setHex(savedHex);
+      if (hexInputRef.current) hexInputRef.current.value = savedHex.toUpperCase();
+    }
+    setShowPicker(false);
   };
 
   const handleHexTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setHex(v);
-    if (isValidHex(v)) {
-      const norm = normalizeHex(v);
-      if (pickerRef.current) pickerRef.current.value = norm;
-    }
   };
 
   const handleSave = () => {
@@ -122,7 +117,7 @@ export default function KeyColorEditPopup({
             <button
               type="button"
               title="클릭하여 색상 선택"
-              onClick={() => pickerRef.current?.click()}
+              onClick={e => { setPickerPos({ x: e.clientX, y: e.clientY }); setShowPicker(true); }}
               className="relative w-[120px] h-[120px] overflow-hidden hover:scale-[1.02] transition-transform"
             >
               <ColorShape color={displayHex} size={120} />
@@ -133,13 +128,6 @@ export default function KeyColorEditPopup({
                 {displayHex.toUpperCase()}
               </span>
             </button>
-            <input
-              ref={pickerRef}
-              type="color"
-              value={isValidHex(hex) ? normalizeHex(hex) : initialHex}
-              onChange={handlePickerChange}
-              className="sr-only"
-            />
           </div>
 
           {/* Right: fields */}
@@ -216,6 +204,17 @@ export default function KeyColorEditPopup({
           </div>
         </div>
       </div>
+      {/* Color Picker 모달 */}
+      {showPicker && (
+        <div className="fixed inset-0 z-[60]">
+          <ColorPicker
+            color={isValidHex(hex) ? normalizeHex(hex) : initialHex}
+            anchorPos={pickerPos ?? undefined}
+            onChange={handlePickerChange}
+            onClose={handlePickerClose}
+          />
+        </div>
+      )}
     </div>
   );
 }
