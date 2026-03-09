@@ -28,61 +28,45 @@ function PreviewCanvasInner() {
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isEditMode || !previewRef.current) return;
+    console.log('Edit mode changed:', isEditMode);
 
-    let isSelecting = false;
+    if (!isEditMode || !previewRef.current) {
+      console.log('Listener not attached:', { isEditMode, hasRef: !!previewRef.current });
+      return;
+    }
 
-    const handleMouseDown = () => {
-      isSelecting = false;
-    };
+    console.log('✅ Click listener attached');
 
-    const handleMouseMove = () => {
-      // If user drags, mark as selecting
+    const handleClick = (e: MouseEvent) => {
+      // Skip if user selected text
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) {
-        isSelecting = true;
-      }
-    };
-
-    const handleMouseUp = (e: MouseEvent) => {
-      // Check if user just made a text selection
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) {
-        isSelecting = true;
-      }
-
-      if (isSelecting) {
-        isSelecting = false;
-        return; // User selected text, don't select element
+        console.log('Text selected, skipping element selection');
+        return;
       }
 
       const target = e.target as HTMLElement;
-
-      // Try to find element with id, starting from clicked element and going up
-      let element = target.closest('[id]') as HTMLElement;
+      const element = target.closest('[id]') as HTMLElement;
 
       if (!element) {
-        console.log('No element with id found at:', target);
+        console.log('Click on:', target.tagName, target.className);
         return;
       }
 
       const elementId = element.getAttribute('id');
+      console.log('🎯 Clicked element:', elementId);
+
       if (elementId) {
-        console.log('Selected element:', elementId);
         setSelectedElementId(elementId);
         setPanelAnchor({ x: e.clientX, y: e.clientY });
       }
     };
 
     const preview = previewRef.current;
-    preview.addEventListener('mousedown', handleMouseDown);
-    preview.addEventListener('mousemove', handleMouseMove);
-    preview.addEventListener('mouseup', handleMouseUp);
+    preview.addEventListener('click', handleClick, true); // Use capture phase
 
     return () => {
-      preview.removeEventListener('mousedown', handleMouseDown);
-      preview.removeEventListener('mousemove', handleMouseMove);
-      preview.removeEventListener('mouseup', handleMouseUp);
+      preview.removeEventListener('click', handleClick, true);
     };
   }, [isEditMode, setSelectedElementId, setPanelAnchor]);
 
