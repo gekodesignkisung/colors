@@ -37,8 +37,14 @@ function PreviewCanvasInner() {
         return;
       }
 
-      const target = e.target as HTMLElement;
-      const element = target.closest('[id]') as HTMLElement;
+      let target = e.target as Node;
+
+      // If target is a text node, get its parent element
+      if (target.nodeType === Node.TEXT_NODE) {
+        target = target.parentNode as Node;
+      }
+
+      const element = (target as HTMLElement)?.closest('[id]') as HTMLElement;
 
       if (!element) return;
 
