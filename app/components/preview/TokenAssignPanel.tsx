@@ -118,15 +118,15 @@ export default function TokenAssignPanel() {
   return (
     <div
       ref={panelRef}
-      className="fixed bg-white rounded-lg shadow-2xl border-2 border-[#6750a4] flex flex-col"
+      className="fixed bg-white rounded-lg shadow-2xl border-4 border-red-500 flex flex-col"
       style={{
-        left: `${left}px`,
-        top: `${top}px`,
+        right: '20px',
+        top: '100px',
         width: '360px',
         maxHeight: '500px',
         zIndex: 10000,
         backgroundColor: '#ffffff',
-        boxShadow: '0 10px 40px rgba(103, 80, 164, 0.3)',
+        boxShadow: '0 10px 40px rgba(255, 0, 0, 0.5)',
       }}
     >
       {/* Header */}
