@@ -164,7 +164,7 @@ export default function HomePage() {
                 id={`feature-card-${idx}`}
                 key={title}
                 className="p-6 rounded-xl"
-                style={{ backgroundColor: col(v, 'background', 'hover'), borderColor: col(v, 'outline', 'default'), border: `1px solid ${col(v, 'outline', 'default')}`, ...editStyle(`feature-card-${idx}`) }}
+                style={{ backgroundColor: getColor(`feature-card-${idx}`, v, 'background', 'hover'), borderColor: col(v, 'outline', 'default'), border: `1px solid ${col(v, 'outline', 'default')}`, ...editStyle(`feature-card-${idx}`) }}
               >
                 <div className="mb-3 flex items-center gap-2">
                   <div
@@ -228,7 +228,7 @@ export default function HomePage() {
                   className="w-full py-2 rounded-lg font-semibold transition-opacity hover:opacity-90"
 
                   style={{
-                    backgroundColor: highlight ? col(tertiary, 'background', 'default') : col(v, 'background', 'default'),
+                    backgroundColor: getColor(`pricing-btn-${idx}`, highlight ? tertiary : v, 'background', 'default'),
                     color: highlight ? col(tertiary, 'text', 'default') : col(v, 'text', 'default'),
                     ...editStyle(`pricing-btn-${idx}`),
                   }}
