@@ -88,6 +88,8 @@ export default function TokenAssignPanel() {
 
   const { left, top } = getPanelPosition();
 
+  console.log('📍 Panel position:', { left, top, windowWidth: window.innerWidth, windowHeight: window.innerHeight });
+
   // Close on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
