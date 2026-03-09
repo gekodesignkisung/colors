@@ -22,14 +22,20 @@ body {
   transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
 }
 
+/* Edit mode cursor */
+.preview-area[data-edit-mode="true"] {
+  cursor: crosshair !important;
+}
+
 /* Hover effect for clickable elements in edit mode */
 .preview-area[data-edit-mode="true"] [id] {
-  transition: opacity 0.15s ease, box-shadow 0.15s ease !important;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+  cursor: pointer !important;
 }
 
 .preview-area[data-edit-mode="true"] [id]:hover {
-  opacity: 0.75 !important;
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1) !important;
+  opacity: 0.7 !important;
+  box-shadow: inset 0 0 10px rgba(103, 80, 164, 0.3), 0 0 6px rgba(103, 80, 164, 0.4) !important;
 }
 
 /* Custom scrollbar */

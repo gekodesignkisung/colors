@@ -57,11 +57,18 @@ function PreviewCanvasInner() {
       }
 
       const target = e.target as HTMLElement;
-      const element = target.closest('[id]') as HTMLElement;
-      if (!element) return;
+
+      // Try to find element with id, starting from clicked element and going up
+      let element = target.closest('[id]') as HTMLElement;
+
+      if (!element) {
+        console.log('No element with id found at:', target);
+        return;
+      }
 
       const elementId = element.getAttribute('id');
       if (elementId) {
+        console.log('Selected element:', elementId);
         setSelectedElementId(elementId);
         setPanelAnchor({ x: e.clientX, y: e.clientY });
       }
