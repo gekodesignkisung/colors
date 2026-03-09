@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useColorStore } from '@/store/colorStore';
 import { usePreviewContext } from './PreviewContext';
 import { ColorShape } from '@/app/components/ColorShape';
@@ -13,6 +14,7 @@ function toOklchLabel(hex: string): string {
 
 export default function TokenAssignPanel() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   const {
     selectedElementId,
@@ -28,6 +30,10 @@ export default function TokenAssignPanel() {
 
   const panelRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Close on outside click
   useEffect(() => {
     if (!selectedElementId) return;
@@ -39,9 +45,9 @@ export default function TokenAssignPanel() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [selectedElementId]);
+  }, [selectedElementId, setSelectedElementId, setPanelAnchor]);
 
-  if (!selectedElementId) return null;
+  if (!selectedElementId || !mounted) return null;
 
   const currentAssignmentId = previewAssignments[selectedElementId];
 
@@ -55,64 +61,76 @@ export default function TokenAssignPanel() {
     setPanelAnchor(null);
   };
 
-  // Panel position: use panelAnchor if available, else top-right corner
-  let panelStyle: React.CSSProperties;
-  if (panelAnchor) {
-    const panelWidth = 360;
-    const panelHeight = 500;
-    const padding = 10;
-    let left = panelAnchor.x + padding;
-    let top = panelAnchor.y + padding;
+  // Panel position
+  const panelWidth = 360;
+  const panelHeight = 500;
+  const padding = 10;
 
-    if (typeof window !== 'undefined') {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      if (left + panelWidth > vw) left = Math.max(padding, vw - panelWidth - padding);
-      if (top + panelHeight > vh) top = Math.max(padding, vh - panelHeight - padding);
-      if (left < padding) left = padding;
-      if (top < padding) top = padding;
-    }
-    panelStyle = { left: `${left}px`, top: `${top}px` };
+  let left: number;
+  let top: number;
+
+  if (panelAnchor) {
+    left = panelAnchor.x + padding;
+    top = panelAnchor.y + padding;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (left + panelWidth > vw) left = Math.max(padding, vw - panelWidth - padding);
+    if (top + panelHeight > vh) top = Math.max(padding, vh - panelHeight - padding);
+    if (left < padding) left = padding;
+    if (top < padding) top = padding;
   } else {
-    panelStyle = { right: '20px', top: '80px' };
+    left = window.innerWidth - panelWidth - 20;
+    top = 80;
   }
 
-  return (
+  const panel = (
     <div
       ref={panelRef}
-      className="fixed bg-white rounded-lg shadow-lg border border-[#e0e0e0] flex flex-col"
-      style={{ ...panelStyle, width: '360px', maxHeight: '500px', zIndex: 10000 }}
+      style={{
+        position: 'fixed',
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${panelWidth}px`,
+        maxHeight: `${panelHeight}px`,
+        zIndex: 99999,
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        border: '1px solid #e0e0e0',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-[#e0e0e0] shrink-0 bg-[#f5f5f5]">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #e0e0e0', backgroundColor: '#f5f5f5', borderRadius: '8px 8px 0 0', flexShrink: 0 }}>
         <div>
-          <div className="text-sm font-semibold text-gray-900">토큰 선택</div>
-          <div className="text-xs text-gray-500 mt-1">{selectedElementId}</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>토큰 선택</div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>{selectedElementId}</div>
         </div>
         <button
           type="button"
           onClick={() => { setSelectedElementId(null); setPanelAnchor(null); }}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#999', padding: '4px' }}
         >
           ✕
         </button>
       </div>
 
       {/* Search */}
-      <div className="px-5 py-3 border-b border-[#e0e0e0] shrink-0">
+      <div style={{ padding: '10px 20px', borderBottom: '1px solid #e0e0e0', flexShrink: 0 }}>
         <input
           type="text"
           placeholder="🔍 검색..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-[#ddd] rounded-lg focus:outline-none focus:border-[#6750a4]"
+          style={{ width: '100%', padding: '7px 12px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
         />
       </div>
 
       {/* Token list */}
-      <div className="flex-1 overflow-y-auto">
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {filteredTokens.length === 0 ? (
-          <div className="px-5 py-8 text-center text-sm text-gray-500">검색 결과 없음</div>
+          <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: '13px', color: '#999' }}>검색 결과 없음</div>
         ) : (
           filteredTokens.map(token => {
             const isSelected = token.id === currentAssignmentId;
@@ -122,27 +140,36 @@ export default function TokenAssignPanel() {
                 key={token.id}
                 type="button"
                 onClick={() => handleTokenSelect(token.id)}
-                className={`w-full flex items-center text-left h-[46px] px-5 transition-colors
-                  ${isSelected
-                    ? 'bg-[#f0eeff] outline outline-2 outline-[#8b6fe8] -outline-offset-2'
-                    : 'bg-white hover:bg-gray-50'
-                  }`}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  textAlign: 'left',
+                  height: '46px',
+                  padding: '0 20px',
+                  background: isSelected ? '#f0eeff' : 'white',
+                  border: 'none',
+                  borderBottom: '1px solid #f0f0f0',
+                  cursor: 'pointer',
+                  outline: isSelected ? '2px solid #8b6fe8' : 'none',
+                  outlineOffset: '-2px',
+                }}
               >
                 <ColorShape
                   color={token.color}
-                  size={40}
+                  size={36}
                   className="shrink-0"
                   borderColor={isSelected ? '#8b6fe8' : undefined}
                   borderWidth={isSelected ? 2 : undefined}
                 />
-                <div className="pl-[10px] flex flex-col justify-center flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="font-semibold text-[13px] text-[#333333] whitespace-nowrap">
+                <div style={{ paddingLeft: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontWeight: 600, fontSize: '13px', color: '#333', whiteSpace: 'nowrap' }}>
                       {token.name}
                     </span>
-                    {isSelected && <span className="text-[10px] text-[#8b6fe8]">●</span>}
+                    {isSelected && <span style={{ fontSize: '10px', color: '#8b6fe8' }}>●</span>}
                   </div>
-                  <span className={`font-mono truncate ${useOklch ? 'text-[10px] text-[#a78bfa]' : 'text-[11px] text-[#999999]'}`}>
+                  <span style={{ fontFamily: 'monospace', fontSize: useOklch ? '10px' : '11px', color: useOklch ? '#a78bfa' : '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {colorLabel}
                   </span>
                 </div>
@@ -153,4 +180,6 @@ export default function TokenAssignPanel() {
       </div>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }

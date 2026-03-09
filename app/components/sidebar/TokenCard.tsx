@@ -11,9 +11,12 @@ function toOklchLabel(hex: string): string {
 }
 
 export default function TokenCard({ token }: { token: DesignToken }) {
-  const { selectedTokenId, setSelectedToken, useOklch } = useColorStore();
+  const { selectedTokenId, setSelectedToken, useOklch, previewAssignments } = useColorStore();
   const isSelected = selectedTokenId === token.id;
   const colorLabel = useOklch ? toOklchLabel(token.color) : token.color.toUpperCase();
+
+  // Count how many elements have this token assigned
+  const assignmentCount = Object.values(previewAssignments).filter(id => id === token.id).length;
 
   return (
     <button
@@ -34,12 +37,19 @@ export default function TokenCard({ token }: { token: DesignToken }) {
 
       {/* Name + color value (stacked) */}
       <div className="pl-[10px] flex flex-col justify-center flex-1 min-w-0">
-        <div className="flex items-center gap-1">
-          <span className="font-semibold text-[13px] text-[#333333] whitespace-nowrap">
-            {token.name}
-          </span>
-          {token.isManual && (
-            <span className="text-[10px] text-[#8b6fe8]">●</span>
+        <div className="flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[13px] text-[#333333] whitespace-nowrap">
+              {token.name}
+            </span>
+            {token.isManual && (
+              <span className="text-[10px] text-[#8b6fe8]">●</span>
+            )}
+          </div>
+          {assignmentCount > 0 && (
+            <span className="text-[10px] text-[#999999] font-semibold">
+              {assignmentCount}
+            </span>
           )}
         </div>
         <span className={`font-mono truncate ${useOklch ? 'text-[10px] text-[#a78bfa]' : 'text-[11px] text-[#999999]'}`}>

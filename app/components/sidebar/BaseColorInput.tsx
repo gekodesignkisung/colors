@@ -3,15 +3,32 @@
 import { useEffect, useRef, useState } from 'react';
 import { useColorStore, ProjectData } from '@/store/colorStore';
 import KeyColorEditPopup from '@/app/components/KeyColorEditPopup';
-import GenerateSettingsPopup from '@/app/components/GenerateSettingsPopup';
 import ColorPicker from '@/app/components/ColorPicker';
 import { ColorShape } from '@/app/components/ColorShape';
 import { hexToOKLCH } from '@/lib/colorUtils';
+import { buildFormulaString } from '@/lib/generateTokens';
+import { OpGenSettings } from '@/types/tokens';
 
 /** Format OKLCH values for display: oklch(0.55 0.18 293°) */
 function toOklchLabel(hex: string): string {
   const { l, c, h } = hexToOKLCH(hex);
   return `oklch(${l.toFixed(2)} ${c.toFixed(3)} ${Math.round(h)}°)`;
+}
+
+/** Get display text for a color card in Auto mode */
+function getAutoModeDisplay(
+  colorKey: string,
+  keyGenSettings: Record<string, any>,
+  groupLabels: Record<string, string>,
+): string {
+  const kgs = keyGenSettings[colorKey];
+  if (!kgs || kgs.autoSettings.kind !== 'operation') {
+    return 'Range-based';
+  }
+  const opSettings = kgs.autoSettings as OpGenSettings;
+  const keyLabel = groupLabels[colorKey] ?? colorKey;
+  const sourceLabel = groupLabels[opSettings.sourceKey] ?? opSettings.sourceKey;
+  return buildFormulaString(keyLabel, opSettings, sourceLabel);
 }
 
 const CORE_KEYS = new Set(['primary', 'secondary', 'tertiary', 'neutral']);
@@ -24,6 +41,8 @@ export default function BaseColorInput() {
     useOklch, toggleOklch,
     projectName, setProjectName,
     newProject, saveProject, loadProject,
+    keyGenSettings, setKeyGenSettings,
+    globalGenerationMode, setGlobalGenerationMode,
   } = useColorStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,7 +50,6 @@ export default function BaseColorInput() {
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [creatingGroup, setCreatingGroup] = useState(false);
-  const [showGenSettings, setShowGenSettings] = useState(false);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -192,15 +210,31 @@ export default function BaseColorInput() {
       {/* Content area */}
       <div className="flex-1 overflow-y-auto p-0">
         <div className="flex flex-col gap-0">
+          {/* Key color generation mode selector */}
+          <div className="flex items-center justify-between shrink-0 h-[50px] bg-white border-b border-[#ebebeb] px-5">
+            <span className="text-[12px] font-semibold text-[#666]">Key color generation</span>
+            <select
+              value={globalGenerationMode}
+              onChange={e => setGlobalGenerationMode(e.target.value as 'manual' | 'auto')}
+              className="h-7 px-3 pr-8 border border-[#ddd] rounded-[6px] text-[12px] font-medium text-[#333] outline-none focus:border-[#808088] bg-white accent-[#999]"
+            >
+              <option value="manual">Manual</option>
+              <option value="auto">Auto</option>
+            </select>
+          </div>
+
           {/* Color cards */}
-          <div className="flex flex-col gap-1 pt-2">
+          <div className="flex flex-col gap-0 pt-2">
             {groupOrder.map((key) => {
               const label = groupLabels[key] ?? key;
               const raw = baseColors[key] ?? '#000000';
+              const valueDisplay = globalGenerationMode === 'auto'
+                ? getAutoModeDisplay(key, keyGenSettings, groupLabels)
+                : (useOklch ? toOklchLabel(raw) : raw.toUpperCase());
               return (
                 <div
                   key={key}
-                  className="flex items-center min-h-[64px] w-full px-5 py-2 hover:bg-[#f5f5f5] transition-colors"
+                  className="flex items-center min-h-[64px] w-full px-5 py-2 hover:bg-[#f5f5f5] transition-colors border-b border-[#f0f0f0]"
                 >
                   {/* Swatch — 클릭 시 바로 ColorPicker */}
                   <button
@@ -219,7 +253,7 @@ export default function BaseColorInput() {
                   >
                     <span className="font-semibold text-sm text-[#333333] leading-tight">{label}</span>
                     <span className="text-xs font-medium text-[#999999] font-mono">
-                      {useOklch ? toOklchLabel(raw) : raw.toUpperCase()}
+                      {valueDisplay}
                     </span>
                   </button>
                 </div>
@@ -238,28 +272,18 @@ export default function BaseColorInput() {
             </button>
           </div>
 
-          {/* Generate button + settings */}
-          <div className="flex items-center gap-2 p-5">
+          {/* Generate button */}
+          <div className="p-5">
             <button
               type="button"
               onClick={randomizeColors}
-              className="flex-1 flex items-center justify-center h-[50px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] gap-2 cursor-pointer hover:opacity-75 transition-opacity"
+              className="w-full flex items-center justify-center h-[50px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] gap-2 cursor-pointer hover:opacity-75 transition-opacity"
             >
               <div className="flex items-center justify-center shrink-0 w-8 h-8">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/icon-generate.svg" alt="" width={22} height={22} aria-hidden="true" />
               </div>
               <span className="font-semibold text-sm text-[#333333]">Generate</span>
-            </button>
-            <button
-              type="button"
-              title="생성 범위 설정"
-              aria-label="생성 범위 설정"
-              onClick={() => setShowGenSettings(true)}
-              className="flex items-center justify-center w-[50px] h-[50px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] shrink-0 cursor-pointer hover:opacity-75 transition-opacity"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon-filter.svg" alt="" width={30} height={30} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -308,15 +332,11 @@ export default function BaseColorInput() {
           initialLabel={groupLabels[selectedKey] ?? selectedKey}
           initialDescription={groupDescriptions[selectedKey] ?? ''}
           isCore={CORE_KEYS.has(selectedKey)}
+          globalGenerationMode={globalGenerationMode}
           onSave={(hex, label, desc) => handleSave(selectedKey, hex, label, desc)}
           onClose={() => setSelectedKey(null)}
           onRemove={!CORE_KEYS.has(selectedKey) ? () => removeGroup(selectedKey) : undefined}
         />
-      )}
-
-      {/* Generate settings popup */}
-      {showGenSettings && (
-        <GenerateSettingsPopup onClose={() => setShowGenSettings(false)} />
       )}
 
       {/* Create popup */}
@@ -327,6 +347,7 @@ export default function BaseColorInput() {
           initialLabel=""
           initialDescription=""
           isCore={false}
+          globalGenerationMode={globalGenerationMode}
           onSave={(hex, label, desc) => {
             const finalLabel = label.trim() || 'New Group';
             addGroup(finalLabel, hex, desc);
@@ -337,7 +358,7 @@ export default function BaseColorInput() {
 
       {/* New project dialog */}
       {showNewDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[10px]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.1)] w-[400px] flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex h-[70px] items-center justify-between px-6 shrink-0">

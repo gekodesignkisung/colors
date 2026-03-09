@@ -1,4 +1,4 @@
-import { BaseColors, DesignToken, TokenGroup, TokenRule } from '@/types/tokens';
+import { BaseColors, DesignToken, TokenGroup, TokenRule, OpGenSettings } from '@/types/tokens';
 import {
   hexToHSL, hslToHex, getOnColor, getOnColorOKLCH, setLightness, setSaturation, lighten, darken,
   hexToOKLCH, oklchToHex, setLightnessOKLCH, lightenOKLCH, darkenOKLCH,
@@ -92,7 +92,7 @@ export function generateTokensFromNaming(
         tokens.push(makeToken(id, id, variant, finalColor, {
           operation: 'source',
           source: variant,
-          description: `${variant} · ${type} · ${state}`,
+          description: '',
           namingVariant: variant,
           namingState: state,
           namingType: type,
@@ -486,4 +486,20 @@ export function tokensToCSS(tokens: DesignToken[]): string {
 
 export function tokensToJSON(tokens: DesignToken[]): Record<string, string> {
   return Object.fromEntries(tokens.map(t => [t.name, t.color]));
+}
+
+export function buildFormulaString(keyLabel: string, settings: OpGenSettings, sourceLabel: string): string {
+  const { operation, param } = settings;
+  const unit = operation === 'colorShift' ? '°' : '%';
+  switch (operation) {
+    case 'source':        return `f  ${keyLabel} = ${sourceLabel}`;
+    case 'contrast':      return `f  contrast(${sourceLabel})`;
+    case 'invert':        return `f  invertLightness(${sourceLabel})`;
+    case 'lighten':       return `f  lighten(${sourceLabel}, ${param}${unit})`;
+    case 'darken':        return `f  darken(${sourceLabel}, ${param}${unit})`;
+    case 'setSaturation': return `f  setSaturation(${sourceLabel}, ${param}${unit})`;
+    case 'setLightness':  return `f  setLightness(${sourceLabel}, ${param}${unit})`;
+    case 'colorShift':    return `f  colorShift(${sourceLabel}, ${param}${unit})`;
+    default:              return `f  ${keyLabel}`;
+  }
 }

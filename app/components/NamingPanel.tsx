@@ -29,6 +29,7 @@ export default function NamingPanel() {
   const namingEnabled   = useColorStore(s => s.namingEnabled);
   const namingValues    = useColorStore(s => s.namingValues);
   const setNamingNamespace = useColorStore(s => s.setNamingNamespace);
+  const setNamingOrder     = useColorStore(s => s.setNamingOrder);
   const setNamingEnabled   = useColorStore(s => s.setNamingEnabled);
   const setNamingValue     = useColorStore(s => s.setNamingValue);
 
@@ -103,6 +104,25 @@ export default function NamingPanel() {
     setLocalEdit(prev => ({ ...prev, [key]: list.filter(v => v !== tag) }));
   };
 
+  const moveOrder = (key: string, direction: 'up' | 'down', e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    console.log('moveOrder called:', { key, direction, currentOrder: namingOrder });
+    const idx = namingOrder.indexOf(key);
+    console.log('Index of', key, ':', idx);
+    if (idx === -1) return;
+
+    const newOrder = [...namingOrder];
+    if (direction === 'up' && idx > 0) {
+      [newOrder[idx], newOrder[idx - 1]] = [newOrder[idx - 1], newOrder[idx]];
+      console.log('New order after moving up:', newOrder);
+    } else if (direction === 'down' && idx < namingOrder.length - 1) {
+      [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
+      console.log('New order after moving down:', newOrder);
+    }
+    setNamingOrder(newOrder);
+  };
+
   return (
     <div className="flex flex-col h-full bg-white overflow-hidden">
 
@@ -123,7 +143,7 @@ export default function NamingPanel() {
 
       {/* Sections */}
       <div className="flex-1 overflow-y-auto">
-        {SECTIONS.map(sec => {
+        {SECTIONS.sort((a, b) => namingOrder.indexOf(a.key) - namingOrder.indexOf(b.key)).map(sec => {
           const isOn       = namingEnabled.includes(sec.key);
           const isExpanded = expandedKey === sec.key;
           const editList   = (localEdit[sec.key] ?? namingValues[sec.key] ?? []) as string[];
@@ -132,26 +152,52 @@ export default function NamingPanel() {
             <div key={sec.key} className="border-b border-[#dddddf]">
 
               {/* Row header */}
-              <button
-                type="button"
-                className={`flex items-center gap-[10px] h-[70px] w-full px-[15px] text-left transition-colors
-                  ${isExpanded && isDirty(sec.key) ? 'cursor-default' : 'hover:bg-[#fafafa]'}`}
-                onClick={() => openSection(sec.key)}
+              <div
+                className="flex items-center gap-[10px] h-[70px] px-[15px] text-left"
               >
-                <div className="flex flex-1 flex-col gap-1 justify-center min-w-0">
-                  <div className="flex items-center">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/Icon-bullet-dn.svg"
-                      alt=""
-                      width={20}
-                      height={20}
-                      aria-hidden="true"
-                      className={`shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                    />
-                    <span className="font-semibold text-sm text-[#333]">{sec.label}</span>
+                {/* Label and description */}
+                <button
+                  type="button"
+                  onClick={() => openSection(sec.key)}
+                  className={`flex flex-1 transition-colors
+                    ${isExpanded && isDirty(sec.key) ? 'cursor-default' : 'hover:bg-[#fafafa]'}`}
+                >
+                  <div className="flex flex-1 flex-col gap-0.5 justify-center min-w-0">
+                    <span className="font-semibold text-sm text-[#333] text-left">{sec.label}</span>
+                    <span className="text-[12px] font-medium text-[#999] text-left">{sec.desc}</span>
                   </div>
-                  <span className="text-[12px] font-medium text-[#999] pl-[20px]">{sec.desc}</span>
+                </button>
+
+                {/* Order buttons */}
+                <div className="flex flex-col items-center gap-0 shrink-0">
+                  {namingOrder.indexOf(sec.key) > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => moveOrder(sec.key, 'up', e)}
+                      className="flex items-center justify-center hover:bg-[#f0f0f0] transition-colors rounded-md"
+                      style={{ width: '20px', height: '20px' }}
+                      title="위로 이동"
+                      aria-label="위로 이동"
+                    >
+                      <svg width="14" height="14" fill="none" stroke="#999" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                  )}
+                  {namingOrder.indexOf(sec.key) < namingOrder.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => moveOrder(sec.key, 'down', e)}
+                      className="flex items-center justify-center hover:bg-[#f0f0f0] transition-colors rounded-md"
+                      style={{ width: '20px', height: '20px' }}
+                      title="아래로 이동"
+                      aria-label="아래로 이동"
+                    >
+                      <svg width="14" height="14" fill="none" stroke="#999" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
 
                 {/* Toggle switch */}
@@ -165,7 +211,7 @@ export default function NamingPanel() {
                   onClick={e => toggleEnabled(sec.key, e)}
                   className="shrink-0 cursor-pointer"
                 />
-              </button>
+              </div>
 
               {/* Expanded content */}
               {isExpanded && (

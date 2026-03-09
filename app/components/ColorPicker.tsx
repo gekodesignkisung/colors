@@ -209,7 +209,7 @@ export default function ColorPicker({ color, onChange, onClose, anchorPos }: Col
   return (
     <div
       className="w-[260px] flex flex-col overflow-hidden shadow-2xl"
-      style={{ borderRadius: 10, ...posStyle }}
+      style={{ borderRadius: 10, borderTopLeftRadius: 0, borderTopRightRadius: 0, ...posStyle }}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
     >

@@ -27,15 +27,17 @@ function PreviewCanvasInner() {
   const { isEditMode, setIsEditMode, selectedElementId, setSelectedElementId, setPanelAnchor } = usePreviewContext();
   const previewRef = useRef<HTMLDivElement>(null);
 
+  // counter used to generate ids for elements that don't already have one
+  const autoIdRef = useRef(0);
+
   useEffect(() => {
     if (!isEditMode || !previewRef.current) return;
 
     const handleClick = (e: MouseEvent) => {
-      // Skip if user selected text
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) {
-        return;
-      }
+      // we no longer bail out just because there happens to be a text selection
+      // (clicking on a word used to create a small selection, which prevented
+      // the panel from opening). instead we let the event through and then
+      // clear any selection after capturing the element id below.
 
       let target = e.target as Node;
 
@@ -44,14 +46,32 @@ function PreviewCanvasInner() {
         target = target.parentNode as Node;
       }
 
-      const element = (target as HTMLElement)?.closest('[id]') as HTMLElement;
+      // find closest ancestor with an explicit id
+      let element = (target as HTMLElement)?.closest('[id]') as HTMLElement | null;
+      let elementId: string | null = null;
 
-      if (!element) return;
+      if (element) {
+        elementId = element.getAttribute('id');
+      } else {
+        // no id anywhere in the ancestors; use the clicked element itself and
+        // give it a generated id so it becomes selectable on future hovers
+        const el = target as HTMLElement;
+        if (el && el.nodeType === Node.ELEMENT_NODE) {
+          if (!el.id) {
+            el.id = `preview-auto-${autoIdRef.current++}`;
+          }
+          elementId = el.id;
+        }
+      }
 
-      const elementId = element.getAttribute('id');
       if (elementId) {
         setSelectedElementId(elementId);
         setPanelAnchor({ x: e.clientX, y: e.clientY });
+
+        // remove any accidental text selection so subsequent clicks aren't
+        // ignored by the old guard clause logic or user expectations
+        const sel = window.getSelection();
+        if (sel) sel.removeAllRanges();
       }
     };
 
@@ -128,19 +148,13 @@ function PreviewCanvasInner() {
         </button>
       </div>
 
-      {/* Debug: Show selected element */}
-      {selectedElementId && (
-        <div className="absolute top-2 left-2 bg-yellow-300 px-3 py-1 rounded text-sm font-bold z-50">
-          선택됨: {selectedElementId}
-        </div>
-      )}
-
       {/* Preview content */}
       <div
         ref={previewRef}
         className="flex-1 overflow-y-auto preview-area relative"
         data-edit-mode={isEditMode ? 'true' : 'false'}
-        style={{ WebkitUserSelect: isEditMode ? 'text' : 'none', userSelect: isEditMode ? 'text' : 'none' } as any}
+        // prevent accidental text selection while editing; crosshair cursor
+        style={{ WebkitUserSelect: isEditMode ? 'none' : 'text', userSelect: isEditMode ? 'none' : 'text' } as any}
       >
         {activePreviewTab === 'home' && <HomePage />}
         {activePreviewTab === 'components' && <ComponentGallery />}

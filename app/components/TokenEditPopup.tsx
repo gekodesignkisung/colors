@@ -51,7 +51,7 @@ function getNamingDefaultFormula(
 export default function TokenEditPopup() {
   const {
     tokens, selectedTokenId, setSelectedToken, updateToken, resetToken,
-    baseColors, isDark, groupOrder, groupLabels, useOklch,
+    baseColors, isDark, groupOrder, groupLabels, useOklch, setDefaultTokenFormula,
   } = useColorStore();
 
   const SOURCES = [
@@ -66,6 +66,7 @@ export default function TokenEditPopup() {
   const [hexInput,   setHexInput]   = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPos,  setPickerPos]  = useState<{ x: number; y: number } | null>(null);
+  const [showToast,  setShowToast]  = useState(false);
 
   // Formula editor state
   const [operation,         setOperation]         = useState<TokenOperation>('setLightness');
@@ -103,6 +104,14 @@ export default function TokenEditPopup() {
       }
     }
   }, [token]);
+
+  // Auto-hide toast after 2.5 seconds
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => setShowToast(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
 
   if (!token) return null;
@@ -165,19 +174,23 @@ export default function TokenEditPopup() {
     // 창은 유지 — token 변경 시 useEffect가 로컬 상태를 자동 동기화
   };
 
+  const handleSetAsDefault = () => {
+    setDefaultTokenFormula(mode, operation, source, param);
+    setShowToast(true);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[10px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div
         ref={popupRef}
-        className="bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.1)] w-[820px] flex flex-col overflow-hidden"
+        className="bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.1)] w-[820px] flex flex-col overflow-hidden relative"
       >
         {/* Header */}
         <div className="flex h-[80px] items-center justify-between px-6 shrink-0">
           <div className="flex flex-col gap-1">
-            <p className="font-semibold text-[16px] text-[#333]">Creation rules for this color</p>
+            <p className="font-semibold text-[16px] text-[#333]">{token.name}</p>
             <div className="flex gap-2 text-[12px] font-medium text-[#999]">
-              <span>{token.name}</span>
+              <span>Creation rules for this color</span>
             </div>
           </div>
           <button
@@ -220,15 +233,22 @@ export default function TokenEditPopup() {
             {/* Auto-generation context (naming-based only) */}
             {isNamingBased && (
               <div className="flex items-center gap-1.5 bg-[#f5f5f5] border border-[#eee] rounded-[10px] px-3 h-8 text-[11px]">
-                <span className="font-semibold text-[#808088]">Auto</span>
+                <span className={`font-semibold ${mode === 'formula' ? 'text-[#808088]' : 'text-[#ccc]'}`}>
+                  {mode === 'formula' ? 'Auto' : 'Manual'}
+                </span>
                 <span className="text-[#ccc]">·</span>
-                <span className="font-medium text-[#333]">{token.rule.namingVariant}</span>
+                <span className="font-medium text-[#333]">{source}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-[#ccc] shrink-0"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <span className="text-[#333]">{getStateDescription(token.rule.namingState!, token.rule.stateAmount)}</span>
+                <span className="text-[#333]">{operation}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-[#ccc] shrink-0"><path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 <span className="text-[#333]">{token.rule.namingType}</span>
-                <span className="text-[#bbb] ml-1 italic">{getTypeDescription(token.rule.namingType!)}</span>
-                {token.isFormulaOverride && (
+                {mode === 'formula' && param !== undefined && (
+                  <>
+                    <span className="text-[#ccc]">·</span>
+                    <span className="text-[#666]">{param}</span>
+                  </>
+                )}
+                {(mode !== token.rule.operation || (mode === 'formula' && operation !== token.rule.operation) || source !== token.rule.source || param !== token.rule.param) && (
                   <span className="ml-auto text-[10px] font-semibold text-[#f59e0b] bg-[#fef3c7] px-1.5 py-0.5 rounded-[4px]">Modified</span>
                 )}
               </div>
@@ -397,8 +417,7 @@ export default function TokenEditPopup() {
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Describe the purpose or intent..."
-                className="flex-1 border border-[#ddd] rounded-[10px] px-3 py-2 text-[14px] font-medium text-[#333] outline-none focus:border-[#808088] resize-none placeholder-[#ccc]"
+                className="flex-1 border border-[#ddd] rounded-[10px] px-3 py-2 text-[14px] font-medium text-[#333] outline-none focus:border-[#808088] resize-none"
               />
             </div>
           </div>
@@ -421,13 +440,22 @@ export default function TokenEditPopup() {
 
         {/* Footer */}
         <div className="flex h-[80px] items-center justify-between px-[30px] shrink-0">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="h-9 px-4 bg-[#f5f5f5] rounded-[10px] text-[15px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
-          >
-            Reset
-          </button>
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="h-9 px-4 bg-[#f5f5f5] rounded-[10px] text-[15px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleSetAsDefault}
+              className="h-9 px-4 bg-[#f5f5f5] rounded-[10px] text-[15px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
+            >
+              Set as default
+            </button>
+          </div>
           <div className="flex gap-2.5">
             <button
               type="button"
@@ -445,6 +473,15 @@ export default function TokenEditPopup() {
             </button>
           </div>
         </div>
+
+        {/* Toast notification */}
+        {showToast && (
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[70]">
+            <div className="bg-[#333] text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
+              현재 설정이 초기값으로 저장되었습니다.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

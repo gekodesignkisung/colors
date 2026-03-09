@@ -2,6 +2,7 @@
 
 import { useColorStore } from '@/store/colorStore';
 import { hexToHSL } from '@/lib/colorUtils';
+import { usePreviewContext } from './PreviewContext';
 
 function useCol() {
   const tokens = useColorStore(s => s.tokens);
@@ -16,10 +17,11 @@ function useCol() {
 const TYPE_ABBR: Record<string, string> = { background: 'BG', text: 'TX', border: 'BD', icon: 'IC' };
 const STATE_LABELS: Record<string, string> = { default: 'Default', hover: 'Hover', pressed: 'Pressed', disabled: 'Disabled' };
 
-function Swatch({ color, hint }: { color: string; hint: string }) {
+function Swatch({ color, hint, id }: { color: string; hint: string; id?: string }) {
   const dark = hexToHSL(color).l < 55;
   return (
     <div
+      id={id}
       className="w-[52px] h-[46px] rounded-[8px] flex items-center justify-center cursor-default"
       title={hint}
       // eslint-disable-next-line react/forbid-dom-props
@@ -35,6 +37,7 @@ function Swatch({ color, hint }: { color: string; hint: string }) {
 export default function ComponentGallery() {
   const tokens = useColorStore(s => s.tokens);
   const col = useCol();
+  const { getColor } = usePreviewContext();
 
   const variants = [...new Set(tokens.map(t => t.group))];
   const states   = [...new Set(tokens.filter(t => t.rule.namingState).map(t => t.rule.namingState!))];
@@ -52,14 +55,15 @@ export default function ComponentGallery() {
             <div className="flex items-center gap-3 flex-wrap mb-5">
               {states.map(state => (
                 <button
+                  id={`${variant}-button-${state}`}
                   type="button"
                   key={state}
                   className="px-5 h-10 rounded-[10px] text-[13px] font-semibold border"
                   // eslint-disable-next-line react/forbid-dom-props
                   style={{
-                    backgroundColor: col(variant, 'background', state),
-                    color:           col(variant, 'text',       state),
-                    borderColor:     col(variant, 'border',     state),
+                    backgroundColor: getColor(`${variant}-button-${state}`, variant, 'background', state),
+                    color:           getColor(`${variant}-button-${state}`, variant, 'text',       state),
+                    borderColor:     getColor(`${variant}-button-${state}`, variant, 'border',     state),
                   }}
                 >
                   {STATE_LABELS[state] ?? state}
@@ -76,8 +80,9 @@ export default function ComponentGallery() {
                   </span>
                   {states.map(state => (
                     <Swatch
+                      id={`${variant}-swatch-${type}-${state}`}
                       key={state}
-                      color={col(variant, type, state)}
+                      color={getColor(`${variant}-swatch-${type}-${state}`, variant, type, state)}
                       hint={`${variant}.${type}.${state}`}
                     />
                   ))}

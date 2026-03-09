@@ -40,7 +40,7 @@ export interface DesignToken {
 // TokenGroup is now a free string (group key, e.g. 'primary', 'surface', 'custom-1')
 export type TokenGroup = string;
 
-export type PreviewTab = 'page' | 'components' | 'modals' | 'typography';
+export type PreviewTab = 'home' | 'page' | 'components' | 'modals' | 'typography';
 
 export interface ExportFormat {
   css: string;
@@ -52,4 +52,26 @@ export interface GenerateRule {
   h: GenerateRange;
   s: GenerateRange;
   l: GenerateRange;
+}
+
+// Key color generation configuration
+export type KeyColorMode = 'auto' | 'manual';
+
+export interface OpGenSettings {
+  kind: 'operation';
+  sourceKey: string;
+  operation: TokenOperation;
+  param: number;
+}
+
+export interface RangeGenSettings {
+  kind: 'range';
+  rule: GenerateRule;
+}
+
+export type KeyColorAutoSettings = OpGenSettings | RangeGenSettings;
+
+export interface KeyColorGenSettings {
+  mode: KeyColorMode;
+  autoSettings: KeyColorAutoSettings;
 }

@@ -12,8 +12,8 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#dddddf', gap: 1 }}>
-      {/* Left panel — Key Colors (260px) */}
-      <aside style={{ width: 260, flexShrink: 0 }} className="flex flex-col bg-white overflow-hidden">
+      {/* Left panel — Key Colors (300px) */}
+      <aside style={{ width: 300, flexShrink: 0 }} className="flex flex-col bg-white overflow-hidden">
         <BaseColorInput />
       </aside>
 
