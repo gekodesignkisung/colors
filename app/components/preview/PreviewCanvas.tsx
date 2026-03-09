@@ -151,10 +151,10 @@ function PreviewCanvasInner() {
         )}
         {activePreviewTab === 'modals'     && <ModalPreview />}
         {activePreviewTab === 'typography' && <Typography />}
-
-        {/* Token assignment panel */}
-        {selectedElementId && <TokenAssignPanel />}
       </div>
+
+      {/* Token assignment panel — outside scroll container */}
+      {selectedElementId && <TokenAssignPanel />}
     </div>
   );
 }
