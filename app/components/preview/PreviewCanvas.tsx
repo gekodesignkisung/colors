@@ -28,34 +28,21 @@ function PreviewCanvasInner() {
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log('Edit mode changed:', isEditMode);
-
-    if (!isEditMode || !previewRef.current) {
-      console.log('Listener not attached:', { isEditMode, hasRef: !!previewRef.current });
-      return;
-    }
-
-    console.log('✅ Click listener attached');
+    if (!isEditMode || !previewRef.current) return;
 
     const handleClick = (e: MouseEvent) => {
       // Skip if user selected text
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) {
-        console.log('Text selected, skipping element selection');
         return;
       }
 
       const target = e.target as HTMLElement;
       const element = target.closest('[id]') as HTMLElement;
 
-      if (!element) {
-        console.log('Click on:', target.tagName, target.className);
-        return;
-      }
+      if (!element) return;
 
       const elementId = element.getAttribute('id');
-      console.log('🎯 Clicked element:', elementId);
-
       if (elementId) {
         setSelectedElementId(elementId);
         setPanelAnchor({ x: e.clientX, y: e.clientY });

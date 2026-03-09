@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useColorStore } from '@/store/colorStore';
 import { usePreviewContext } from './PreviewContext';
 import { ColorShape } from '@/app/components/ColorShape';
@@ -28,14 +29,9 @@ export default function TokenAssignPanel() {
 
   const panelRef = useRef<HTMLDivElement>(null);
 
-  console.log('🎨 TokenAssignPanel render:', { selectedElementId, panelAnchor, hasTokens: tokens.length });
-
   if (!selectedElementId || !panelAnchor) {
-    console.log('⏭️ Panel not shown - missing selectedElementId or panelAnchor');
     return null;
   }
-
-  console.log('✅ Panel should render now');
 
   const currentAssignmentId = previewAssignments[selectedElementId];
 
@@ -55,53 +51,26 @@ export default function TokenAssignPanel() {
   };
 
   // Calculate panel position with boundary checks
-  const getPanelPosition = () => {
-    const panelWidth = 360;
-    const panelHeight = 500;
-    const padding = 10;
+  const panelWidth = 360;
+  const panelHeight = 500;
+  const padding = 10;
 
-    let left = panelAnchor.x + padding;
-    let top = panelAnchor.y + padding;
+  let left = panelAnchor.x + padding;
+  let top = panelAnchor.y + padding;
 
-    // Check right boundary - use document.documentElement for actual viewport
-    const viewportWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
-    const viewportHeight = Math.max(window.innerHeight, document.documentElement.clientHeight);
+  if (typeof window !== 'undefined') {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-    // Check right boundary
     if (left + panelWidth > viewportWidth) {
       left = Math.max(padding, viewportWidth - panelWidth - padding);
     }
-
-    // Check bottom boundary
     if (top + panelHeight > viewportHeight) {
       top = Math.max(padding, viewportHeight - panelHeight - padding);
     }
-
-    // Check left boundary
-    if (left < padding) {
-      left = padding;
-    }
-
-    // Check top boundary
-    if (top < padding) {
-      top = padding;
-    }
-
-    console.log('📍 Final panel position:', {
-      left,
-      top,
-      viewportWidth,
-      viewportHeight,
-      clickX: panelAnchor.x,
-      clickY: panelAnchor.y
-    });
-
-    return { left, top };
-  };
-
-  const { left, top } = getPanelPosition();
-
-  console.log('📍 Panel position:', { left, top, windowWidth: window.innerWidth, windowHeight: window.innerHeight });
+    if (left < padding) left = padding;
+    if (top < padding) top = padding;
+  }
 
   // Close on outside click
   useEffect(() => {
@@ -115,18 +84,16 @@ export default function TokenAssignPanel() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [selectedElementId]);
 
-  return (
+  const panelContent = (
     <div
       ref={panelRef}
-      className="fixed bg-white rounded-lg shadow-2xl border-4 border-red-500 flex flex-col"
+      className="fixed bg-white rounded-lg shadow-lg border border-[#e0e0e0] flex flex-col"
       style={{
-        right: '20px',
-        top: '100px',
+        left: `${left}px`,
+        top: `${top}px`,
         width: '360px',
         maxHeight: '500px',
         zIndex: 10000,
-        backgroundColor: '#ffffff',
-        boxShadow: '0 10px 40px rgba(255, 0, 0, 0.5)',
       }}
     >
       {/* Header */}
@@ -209,4 +176,6 @@ export default function TokenAssignPanel() {
       </div>
     </div>
   );
+
+  return createPortal(panelContent, document.body);
 }
