@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useColorStore } from '@/store/colorStore';
 import { usePreviewContext } from './PreviewContext';
 import { ColorShape } from '@/app/components/ColorShape';
@@ -177,5 +176,5 @@ export default function TokenAssignPanel() {
     </div>
   );
 
-  return createPortal(panelContent, document.body);
+  return panelContent;
 }
