@@ -63,14 +63,18 @@ export default function TokenAssignPanel() {
     let left = panelAnchor.x + padding;
     let top = panelAnchor.y + padding;
 
+    // Check right boundary - use document.documentElement for actual viewport
+    const viewportWidth = Math.max(window.innerWidth, document.documentElement.clientWidth);
+    const viewportHeight = Math.max(window.innerHeight, document.documentElement.clientHeight);
+
     // Check right boundary
-    if (left + panelWidth > window.innerWidth) {
-      left = window.innerWidth - panelWidth - padding;
+    if (left + panelWidth > viewportWidth) {
+      left = Math.max(padding, viewportWidth - panelWidth - padding);
     }
 
     // Check bottom boundary
-    if (top + panelHeight > window.innerHeight) {
-      top = window.innerHeight - panelHeight - padding;
+    if (top + panelHeight > viewportHeight) {
+      top = Math.max(padding, viewportHeight - panelHeight - padding);
     }
 
     // Check left boundary
@@ -82,6 +86,15 @@ export default function TokenAssignPanel() {
     if (top < padding) {
       top = padding;
     }
+
+    console.log('📍 Final panel position:', {
+      left,
+      top,
+      viewportWidth,
+      viewportHeight,
+      clickX: panelAnchor.x,
+      clickY: panelAnchor.y
+    });
 
     return { left, top };
   };
