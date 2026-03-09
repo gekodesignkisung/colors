@@ -122,6 +122,13 @@ function PreviewCanvasInner() {
         </button>
       </div>
 
+      {/* Debug: Show selected element */}
+      {selectedElementId && (
+        <div className="absolute top-2 left-2 bg-yellow-300 px-3 py-1 rounded text-sm font-bold z-50">
+          선택됨: {selectedElementId}
+        </div>
+      )}
+
       {/* Preview content */}
       <div
         ref={previewRef}
