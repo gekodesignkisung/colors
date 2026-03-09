@@ -22,6 +22,16 @@ body {
   transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
 }
 
+/* Hover effect for clickable elements in edit mode */
+.preview-area[data-edit-mode="true"] [id] {
+  transition: opacity 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.preview-area[data-edit-mode="true"] [id]:hover {
+  opacity: 0.75 !important;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1) !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

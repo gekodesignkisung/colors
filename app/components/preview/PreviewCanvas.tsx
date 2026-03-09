@@ -132,15 +132,15 @@ function PreviewCanvasInner() {
         <button
           type="button"
           onClick={() => setIsEditMode(!isEditMode)}
-          className={`h-7 px-3 rounded text-[12px] font-medium transition-colors
+          className={`h-8 px-4 rounded font-semibold text-[12px] transition-all
             ${
               isEditMode
-                ? 'bg-[#6750a4] text-white'
-                : 'bg-white/20 text-white hover:bg-white/30'
+                ? 'bg-[#6750a4] text-white shadow-lg scale-105'
+                : 'bg-white text-[#404050] hover:bg-[#f0f0f0] border border-gray-300'
             }
           `}
         >
-          {isEditMode ? '편집 완료' : '토큰 할당'}
+          {isEditMode ? '✓ 편집중' : '⚙️ 토큰 할당'}
         </button>
       </div>
 
