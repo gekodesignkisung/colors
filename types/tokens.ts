@@ -1,6 +1,8 @@
 // Dynamic key-value map — supports user-added color groups
 export type BaseColors = Record<string, string>;
 
+export type Stage1Op = 'source' | 'grayscale' | 'invert';
+
 export type TokenOperation =
   | 'source'
   | 'contrast'
@@ -10,6 +12,7 @@ export type TokenOperation =
   | 'setSaturation'
   | 'colorShift'
   | 'invert'
+  | 'grayscale'
   | 'manual'
   | 'fixed';
 
@@ -20,6 +23,7 @@ export interface TokenRule {
   source: TokenSource;
   param?: number;
   description: string;
+  stage1?: Stage1Op;   // 1단계: source(default) | grayscale | invert
   // Naming-based derivation info (set by generateTokensFromNaming)
   namingVariant?: string;
   namingState?: string;

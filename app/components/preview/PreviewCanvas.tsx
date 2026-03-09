@@ -108,8 +108,8 @@ function PreviewCanvasInner() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header — Figma node 7:3 */}
-      <div className="flex items-end justify-between shrink-0 h-14 pl-[40px] pr-[20px] bg-[rgba(96,96,112,0.8)]">
-        {/* Tab buttons — bottom-aligned, 1px gap */}
+      <div className="flex items-center justify-between shrink-0 h-14 px-[20px] bg-[rgba(128,128,144,0.8)]">
+        {/* TAB BUTTONS — commented out, do not delete
         <div className="flex items-end gap-px">
           {TABS.map(tab => {
             const isActive = tab.id === activePreviewTab;
@@ -131,20 +131,22 @@ function PreviewCanvasInner() {
             );
           })}
         </div>
+        */}
 
-        {/* Token assignment button */}
+        {/* Left: title */}
+        <span className="font-semibold text-[16px] text-white">Preview Template</span>
+
+        {/* Right: token assign button */}
         <button
           type="button"
           onClick={() => setIsEditMode(!isEditMode)}
-          className={`h-8 px-4 rounded font-semibold text-[12px] transition-all
-            ${
-              isEditMode
-                ? 'bg-[#6750a4] text-white shadow-lg scale-105'
-                : 'bg-white text-[#404050] hover:bg-[#f0f0f0] border border-gray-300'
-            }
-          `}
+          className={`flex items-center gap-0 h-[30px] transition-all ${isEditMode ? 'opacity-80' : 'hover:opacity-80'}`}
         >
-          {isEditMode ? '✓ 편집중' : '⚙️ 토큰 할당'}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon-colorpicker.svg" alt="" width={30} height={30} aria-hidden="true" />
+          <span className="font-medium text-[14px] text-white">
+            {isEditMode ? 'Save' : 'Edit Colors'}
+          </span>
         </button>
       </div>
 
@@ -153,8 +155,6 @@ function PreviewCanvasInner() {
         ref={previewRef}
         className="flex-1 overflow-y-auto preview-area relative"
         data-edit-mode={isEditMode ? 'true' : 'false'}
-        // prevent accidental text selection while editing; crosshair cursor
-        style={{ WebkitUserSelect: isEditMode ? 'none' : 'text', userSelect: isEditMode ? 'none' : 'text' } as any}
       >
         {activePreviewTab === 'home' && <HomePage />}
         {activePreviewTab === 'components' && <ComponentGallery />}

@@ -45,7 +45,10 @@ export default function GenerateSettingsPopup({ onClose }: Props) {
   };
 
   const handleSetAsDefault = () => {
-    Object.entries(localRules).forEach(([key, rule]) => setDefaultGenerateRules(key, rule));
+    Object.entries(localRules).forEach(([key, rule]) => {
+      setGenerateRule(key, rule);
+      setDefaultGenerateRules(key, rule);
+    });
   };
 
   const handleSave = () => {

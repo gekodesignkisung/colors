@@ -52,7 +52,7 @@ export default function TokenCard({ token }: { token: DesignToken }) {
             </span>
           )}
         </div>
-        <span className={`font-mono truncate ${useOklch ? 'text-[10px] text-[#a78bfa]' : 'text-[11px] text-[#999999]'}`}>
+        <span className={`font-mono truncate text-[11px] leading-[14px] ${useOklch ? 'text-[#a78bfa]' : 'text-[#999999]'}`}>
           {colorLabel}
         </span>
       </div>

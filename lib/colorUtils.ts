@@ -293,3 +293,11 @@ export function invertOKLCH(hex: string): string {
   const ok = hexToOKLCH(hex);
   return oklchToHex(1 - ok.l, ok.c, ok.h);
 }
+export function grayscaleHSL(hex: string): string {
+  const { h, l } = hexToHSL(hex);
+  return hslToHex(h, 0, l);
+}
+export function grayscaleOKLCH(hex: string): string {
+  const ok = hexToOKLCH(hex);
+  return oklchToHex(ok.l, 0, ok.h);
+}

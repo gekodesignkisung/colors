@@ -184,7 +184,7 @@ export default function BaseColorInput() {
       />
 
       {/* Info row */}
-      <div className="flex items-center justify-between shrink-0 h-[40px] bg-[#f5f5f5] border-b border-[#dddddf] px-[20px]">
+      <div className="flex items-center justify-between shrink-0 h-[40px] bg-[#f5f5f5] border-b border-[#dddddf] px-[15px]">
         {editingName ? (
           <input
             ref={nameInputRef}
@@ -205,24 +205,20 @@ export default function BaseColorInput() {
             {projectName}
           </button>
         )}
+        <select
+          aria-label="Key color generation mode"
+          value={globalGenerationMode}
+          onChange={e => setGlobalGenerationMode(e.target.value as 'manual' | 'auto')}
+          className="shrink-0 h-7 pl-[6px] pr-8 border border-[#ddd] rounded-[6px] text-[12px] font-medium text-[#333] outline-none focus:border-[#808088] bg-white accent-[#999] generation-select"
+        >
+          <option value="manual">Manual</option>
+          <option value="auto">Auto</option>
+        </select>
       </div>
 
       {/* Content area */}
       <div className="flex-1 overflow-y-auto p-0">
         <div className="flex flex-col gap-0">
-          {/* Key color generation mode selector */}
-          <div className="flex items-center justify-between shrink-0 h-[50px] bg-white border-b border-[#ebebeb] px-5">
-            <span className="text-[12px] font-semibold text-[#666]">Key color generation</span>
-            <select
-              value={globalGenerationMode}
-              onChange={e => setGlobalGenerationMode(e.target.value as 'manual' | 'auto')}
-              className="h-7 px-3 pr-8 border border-[#ddd] rounded-[6px] text-[12px] font-medium text-[#333] outline-none focus:border-[#808088] bg-white accent-[#999]"
-            >
-              <option value="manual">Manual</option>
-              <option value="auto">Auto</option>
-            </select>
-          </div>
-
           {/* Color cards */}
           <div className="flex flex-col gap-0 pt-2">
             {groupOrder.map((key) => {
@@ -260,32 +256,24 @@ export default function BaseColorInput() {
               );
             })}
 
-            {/* Add key color button — same height as color card */}
-            <button
-              type="button"
-              title="키컬러 추가하기"
-              onClick={() => setCreatingGroup(true)}
-              className="flex items-center justify-center min-h-[64px] w-full px-5 py-2 hover:bg-[#f5f5f5] transition-colors"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon-add.svg" alt="" width={32} height={32} aria-hidden="true" />
-            </button>
           </div>
 
-          {/* Generate button */}
-          <div className="p-5">
-            <button
-              type="button"
-              onClick={randomizeColors}
-              className="w-full flex items-center justify-center h-[50px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] gap-2 cursor-pointer hover:opacity-75 transition-opacity"
-            >
-              <div className="flex items-center justify-center shrink-0 w-8 h-8">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon-generate.svg" alt="" width={22} height={22} aria-hidden="true" />
-              </div>
-              <span className="font-semibold text-sm text-[#333333]">Generate</span>
-            </button>
-          </div>
+          {/* Generate button (only in auto mode) */}
+          {globalGenerationMode === 'auto' && (
+            <div className="p-5">
+              <button
+                type="button"
+                onClick={randomizeColors}
+                className="w-full flex items-center justify-center h-[50px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] gap-2 cursor-pointer hover:opacity-75 transition-opacity"
+              >
+                <div className="flex items-center justify-center shrink-0 w-8 h-8">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icon-generate.svg" alt="" width={22} height={22} aria-hidden="true" />
+                </div>
+                <span className="font-semibold text-sm text-[#333333]">Generate</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

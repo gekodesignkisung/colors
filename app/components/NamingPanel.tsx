@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useColorStore, DEFAULT_NAMING_NAMESPACE, DEFAULT_NAMING_VALUES } from '@/store/colorStore';
 
 
@@ -28,21 +28,46 @@ export default function NamingPanel() {
   const namingOrder     = useColorStore(s => s.namingOrder);
   const namingEnabled   = useColorStore(s => s.namingEnabled);
   const namingValues    = useColorStore(s => s.namingValues);
+
+  const defaultNamingNamespace = useColorStore(s => s.defaultNamingNamespace);
+  const defaultNamingValues    = useColorStore(s => s.defaultNamingValues);
+
   const setNamingNamespace = useColorStore(s => s.setNamingNamespace);
   const setNamingOrder     = useColorStore(s => s.setNamingOrder);
   const setNamingEnabled   = useColorStore(s => s.setNamingEnabled);
   const setNamingValue     = useColorStore(s => s.setNamingValue);
 
+  const setDefaultNamingNamespace = useColorStore(s => s.setDefaultNamingNamespace);
+  const setDefaultNamingValues    = useColorStore(s => s.setDefaultNamingValues);
+
   // ── Local UI state ──
   const [expandedKey, setExpandedKey] = useState<SectionKey | null>(null);
   const [localEdit,   setLocalEdit]   = useState<Record<string, string | string[]>>({});
   const [inputVal,    setInputVal]    = useState('');
+  const [showToast,   setShowToast]   = useState(false);
+
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => setShowToast(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
   // ── Preview token string ──
   const previewStr = namingOrder
     .filter(k => namingEnabled.includes(k))
     .map(k => k === 'namespace' ? (namingNamespace || 'ns') : ((namingValues[k] ?? [])[0] ?? k))
     .join('.');
+
+  const isChangedFromDefault = (key: SectionKey): boolean => {
+    if (key === 'namespace') {
+      const current = (localEdit.namespace as string) ?? namingNamespace;
+      return current !== defaultNamingNamespace;
+    }
+    const current = (localEdit[key] as string[]) ?? namingValues[key] ?? [];
+    const def     = defaultNamingValues[key] ?? [];
+    return JSON.stringify(current) !== JSON.stringify(def);
+  };
 
   const isDirty = (key: SectionKey): boolean => {
     if (!(key in localEdit)) return false;
@@ -82,10 +107,11 @@ export default function NamingPanel() {
   const handleCancel = () => setExpandedKey(null);
 
   const handleReset = (key: SectionKey) => {
+    const defaults = useColorStore.getState();
     if (key === 'namespace') {
-      setLocalEdit(prev => ({ ...prev, namespace: DEFAULT_NAMING_NAMESPACE }));
+      setLocalEdit(prev => ({ ...prev, namespace: defaults.defaultNamingNamespace }));
     } else {
-      setLocalEdit(prev => ({ ...prev, [key]: [...(DEFAULT_NAMING_VALUES[key] ?? [])] }));
+      setLocalEdit(prev => ({ ...prev, [key]: [...(defaults.defaultNamingValues[key] ?? [])] }));
     }
   };
 
@@ -124,7 +150,7 @@ export default function NamingPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="relative flex flex-col h-full bg-white overflow-hidden">
 
       {/* Header */}
       <div className="flex items-center justify-between shrink-0 h-[56px] bg-[#606070] px-[15px]">
@@ -136,7 +162,7 @@ export default function NamingPanel() {
       </div>
 
       {/* Preview row */}
-      <div className="flex items-center justify-between shrink-0 h-[40px] bg-[#f5f5f5] border-b border-[#dddddf] px-[20px]">
+      <div className="flex items-center justify-between shrink-0 h-[40px] bg-[#f5f5f5] border-b border-[#dddddf] px-[15px]">
         <span className="font-semibold text-[13px] text-[#999]">Form</span>
         <span className="text-[13px] text-[#333] font-mono truncate ml-4 text-right">{previewStr || '—'}</span>
       </div>
@@ -278,13 +304,36 @@ export default function NamingPanel() {
 
                   {/* Footer buttons */}
                   <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => handleReset(sec.key)}
-                      className="h-[30px] px-3 bg-[#f5f5f5] rounded-[8px] text-[12.5px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
-                    >
-                      Reset
-                    </button>
+                    <div className="flex gap-[8px]">
+                      <button
+                        type="button"
+                        onClick={() => handleReset(sec.key)}
+                        className="h-[30px] px-3 bg-[#f5f5f5] rounded-[8px] text-[12.5px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
+                      >
+                        Reset
+                      </button>
+                      {isChangedFromDefault(sec.key) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (sec.key === 'namespace') {
+                              const val = (localEdit.namespace as string) ?? namingNamespace;
+                              setNamingNamespace(val);
+                              setDefaultNamingNamespace(val);
+                            } else {
+                              const list = ((localEdit[sec.key] as string[]) ?? namingValues[sec.key] ?? []);
+                              setNamingValue(sec.key, list as string[]);
+                              setDefaultNamingValues(sec.key, list as string[]);
+                            }
+                            setExpandedKey(null);
+                            setShowToast(true);
+                          }}
+                          className="h-[30px] px-3 bg-[#eef5ff] rounded-[8px] text-[12.5px] font-medium text-[#4a70e2] hover:bg-[#ddeaff] transition-colors"
+                        >
+                          Set default
+                        </button>
+                      )}
+                    </div>
                     <div className="flex gap-[8px]">
                       <button
                         type="button"
@@ -308,6 +357,15 @@ export default function NamingPanel() {
           );
         })}
       </div>
+
+      {/* Toast notification */}
+      {showToast && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70]">
+          <div className="bg-[#333] text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
+            현재 설정이 초기값으로 저장되었습니다.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

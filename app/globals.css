@@ -25,8 +25,13 @@ body {
 /* Edit mode cursor */
 .preview-area[data-edit-mode="true"] {
   cursor: crosshair !important;
-  /* disable text selection entirely when editing, handled via inline style too */
+  -webkit-user-select: none !important;
   user-select: none !important;
+}
+
+.preview-area[data-edit-mode="false"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* all children should also show crosshair (text elements normally show I-beam) */
@@ -46,10 +51,43 @@ body {
   box-shadow: none !important;
 }
 
+/* Param slider */
+input[type=range].param-slider {
+  background: linear-gradient(to right, #999 var(--pct, 0%), #ddd var(--pct, 0%));
+}
+input[type=range].param-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #999;
+  cursor: pointer;
+}
+input[type=range].param-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #999;
+  cursor: pointer;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
+}
+
+/* dropdown styling for generation select */
+.generation-select {
+  border-radius: 5px;
+}
+
+/* ensure options show rounded corners when possible */
+.generation-select option {
+  border-radius: 5px;
+  padding-left: 4px; /* reinforce bullet offset */
 }
 ::-webkit-scrollbar-track {
   background: transparent;

@@ -2,7 +2,7 @@ import { BaseColors, DesignToken, TokenGroup, TokenRule, OpGenSettings } from '@
 import {
   hexToHSL, hslToHex, getOnColor, getOnColorOKLCH, setLightness, setSaturation, lighten, darken,
   hexToOKLCH, oklchToHex, setLightnessOKLCH, lightenOKLCH, darkenOKLCH,
-  setSaturationOKLCH, colorShiftOKLCH, invertOKLCH,
+  setSaturationOKLCH, colorShiftOKLCH, invertOKLCH, grayscaleHSL, grayscaleOKLCH,
 } from './colorUtils';
 
 function makeToken(
@@ -434,6 +434,35 @@ function generateGroupTokens(key: string, hex: string, isDark: boolean, useOklch
   ];
 }
 
+// Apply stage1 transform to a hex color
+function applyStage1(hex: string, stage1: 'source' | 'grayscale' | 'invert', useOklch: boolean): string {
+  if (stage1 === 'grayscale') return useOklch ? grayscaleOKLCH(hex) : grayscaleHSL(hex);
+  if (stage1 === 'invert')    return useOklch ? invertOKLCH(hex) : (() => { const { h, s, l } = hexToHSL(hex); return hslToHex(h, s, 100 - l); })();
+  return hex;
+}
+
+// Apply stage2 modifier to a hex color
+function applyStage2(hex: string, operation: string, p: number, useOklch: boolean): string {
+  if (useOklch) {
+    switch (operation) {
+      case 'lighten':       return lightenOKLCH(hex, p);
+      case 'darken':        return darkenOKLCH(hex, p);
+      case 'setLightness':  return setLightnessOKLCH(hex, p / 100);
+      case 'setSaturation': return setSaturationOKLCH(hex, p);
+      case 'colorShift':    return colorShiftOKLCH(hex, p);
+      default:              return hex;
+    }
+  }
+  switch (operation) {
+    case 'lighten':       return lighten(hex, p);
+    case 'darken':        return darken(hex, p);
+    case 'setLightness':  return setLightness(hex, p);
+    case 'setSaturation': return setSaturation(hex, p);
+    case 'colorShift':    { const { h, s, l } = hexToHSL(hex); return hslToHex((h + p) % 360, s, l); }
+    default:              return hex;
+  }
+}
+
 // Apply a TokenRule to compute the resulting hex color
 export function applyRule(rule: TokenRule, base: BaseColors, isDark: boolean, useOklch = false): string {
   let sourceHex: string;
@@ -445,6 +474,14 @@ export function applyRule(rule: TokenRule, base: BaseColors, isDark: boolean, us
 
   const p = rule.param ?? 50;
 
+  // 2-stage system: stage1 defined
+  if (rule.stage1 !== undefined) {
+    const intermediate = applyStage1(sourceHex, rule.stage1, useOklch);
+    if (rule.operation === 'source') return intermediate;
+    return applyStage2(intermediate, rule.operation, p, useOklch);
+  }
+
+  // Legacy single-stage system (backward compat)
   if (useOklch) {
     switch (rule.operation) {
       case 'source':        return sourceHex;
@@ -455,6 +492,7 @@ export function applyRule(rule: TokenRule, base: BaseColors, isDark: boolean, us
       case 'setSaturation': return setSaturationOKLCH(sourceHex, p);
       case 'colorShift':    return colorShiftOKLCH(sourceHex, p);
       case 'invert':        return invertOKLCH(sourceHex);
+      case 'grayscale':     return grayscaleOKLCH(sourceHex);
       default:              return sourceHex;
     }
   }
@@ -466,14 +504,9 @@ export function applyRule(rule: TokenRule, base: BaseColors, isDark: boolean, us
     case 'darken':        return darken(sourceHex, p);
     case 'setLightness':  return setLightness(sourceHex, p);
     case 'setSaturation': return setSaturation(sourceHex, p);
-    case 'colorShift': {
-      const { h, s, l } = hexToHSL(sourceHex);
-      return hslToHex((h + p) % 360, s, l);
-    }
-    case 'invert': {
-      const { h, s, l } = hexToHSL(sourceHex);
-      return hslToHex(h, s, 100 - l);
-    }
+    case 'colorShift':    { const { h, s, l } = hexToHSL(sourceHex); return hslToHex((h + p) % 360, s, l); }
+    case 'invert':        { const { h, s, l } = hexToHSL(sourceHex); return hslToHex(h, s, 100 - l); }
+    case 'grayscale':     return grayscaleHSL(sourceHex);
     default:              return sourceHex;
   }
 }

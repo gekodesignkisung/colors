@@ -8,10 +8,10 @@ import { generateRandomColor, generateRandomColorInRange } from '@/lib/colorUtil
 
 // ── Base colors ───────────────────────────────────────────────────────────────
 const DEFAULT_BASE: BaseColors = {
-  primary:   '#6750a4',
-  secondary: '#625b71',
-  tertiary:  '#7d5260',
-  neutral:   '#605d64',
+  primary:   '#0054DC',
+  secondary: '#3876DB',
+  tertiary:  '#00ABB0',
+  neutral:   '#202020',
 };
 
 const DEFAULT_GROUP_ORDER = ['primary', 'secondary', 'tertiary', 'neutral'];
@@ -235,6 +235,10 @@ export const useColorStore = create<ColorStore>()(
   namingEnabled:   DEFAULT_NAMING_ENABLED,
   namingValues:    { ...DEFAULT_NAMING_VALUES },
 
+  // user-adjustable defaults for naming rules (persisted separately from current settings)
+  defaultNamingNamespace: DEFAULT_NAMING_NAMESPACE,
+  defaultNamingValues:    { ...DEFAULT_NAMING_VALUES },
+
   previewAssignments: {},
 
   projectName: 'Untitled',
@@ -330,6 +334,14 @@ export const useColorStore = create<ColorStore>()(
 
   setGroupLabel: (key, label) => {
     set(state => ({ groupLabels: { ...state.groupLabels, [key]: label } }));
+  },
+
+  // naming defaults actions
+  setDefaultNamingNamespace: (ns: string) => {
+    set({ defaultNamingNamespace: ns });
+  },
+  setDefaultNamingValues: (key: string, values: string[]) => {
+    set(state => ({ defaultNamingValues: { ...state.defaultNamingValues, [key]: values } }));
   },
 
   setGroupDescription: (key, desc) => {
@@ -430,17 +442,24 @@ export const useColorStore = create<ColorStore>()(
 
   // ── Save / Load ─────────────────────────────────────────────────────────────
   newProject: () => {
-    const tokens = generateTokensFromNaming(DEFAULT_BASE, INIT_NAMING, false, true);
+    const state = get();
+    const namingConfig: NamingConfig = {
+      namespace: state.defaultNamingNamespace ?? DEFAULT_NAMING_NAMESPACE,
+      order:     DEFAULT_NAMING_ORDER,
+      enabled:   DEFAULT_NAMING_ENABLED,
+      values:    { ...state.defaultNamingValues },
+    };
+    const tokens = generateTokensFromNaming(DEFAULT_BASE, namingConfig, false, true);
     set({
       projectName: 'Untitled',
       baseColors: { ...DEFAULT_BASE },
       groupOrder: [...DEFAULT_GROUP_ORDER],
       groupLabels: { ...DEFAULT_GROUP_LABELS },
       groupDescriptions: { ...DEFAULT_GROUP_DESCRIPTIONS },
-      namingNamespace: DEFAULT_NAMING_NAMESPACE,
+      namingNamespace: state.defaultNamingNamespace ?? DEFAULT_NAMING_NAMESPACE,
       namingOrder: DEFAULT_NAMING_ORDER,
       namingEnabled: DEFAULT_NAMING_ENABLED,
-      namingValues: { ...DEFAULT_NAMING_VALUES },
+      namingValues: { ...state.defaultNamingValues },
       useOklch: true,
       isDark: false,
       generateRules: {},
@@ -585,6 +604,21 @@ export const useColorStore = create<ColorStore>()(
     }),
     {
       name: 'color-store',
+      storage: {
+        getItem: (name) => {
+          try {
+            const value = localStorage.getItem(name);
+            return value ? JSON.parse(value) : null;
+          } catch {
+            localStorage.removeItem(name);
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try { localStorage.setItem(name, JSON.stringify(value)); } catch { /* quota exceeded */ }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
     }
   )
 );
