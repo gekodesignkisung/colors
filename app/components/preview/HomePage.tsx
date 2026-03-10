@@ -93,9 +93,9 @@ export default function HomePage() {
               onClick={() => setActiveNav(i)}
               className="font-medium text-sm transition-opacity hover:opacity-80"
               style={{
-                color: getColor(`nav-item-${i}`, primary, 'text', 'default'),
+                color: '#999',
                 opacity: activeNav === i ? 1 : 0.7,
-                borderBottom: activeNav === i ? `2px solid ${getColor(`nav-item-${i}`, primary, 'text', 'default')}` : 'none',
+                borderBottom: activeNav === i ? `2px solid #999` : 'none',
                 paddingBottom: '6px',
               }}
             >
@@ -132,11 +132,13 @@ export default function HomePage() {
         <button
           id="hero-cta-bg"
           type="button"
-          className="px-8 py-3 rounded-full font-semibold text-base transition-opacity hover:opacity-90 inline-block"
+          className="px-8 py-3 rounded-full font-semibold text-base transition-opacity hover:opacity-90 inline-block text-center mx-auto bg-white border-2 border-[#999] text-[#999]"
           
-          style={{ backgroundColor: getColor('hero-cta-bg', secondary, 'background', 'default'), color: getColor('hero-cta-bg', secondary, 'text', 'default'), ...editStyle('hero-cta-bg') }}
+          style={{
+            ...editStyle('hero-cta-bg'),
+          }}
         >
-          Explore Documentation
+          <span id="hero-cta-text" className="whitespace-nowrap">Explore Documentation</span>
         </button>
       </section>
 
@@ -253,7 +255,7 @@ export default function HomePage() {
           className="px-8 py-3 rounded-lg font-semibold text-base transition-opacity hover:opacity-90"
           style={{ backgroundColor: getColor('cta-button', secondary, 'background', 'default'), color: getColor('cta-button', secondary, 'text', 'default') }}
         >
-          Start Free Trial
+          <span id="cta-button-text">Start Free Trial</span>
         </button>
       </section>
 

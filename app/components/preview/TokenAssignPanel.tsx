@@ -120,7 +120,7 @@ export default function TokenAssignPanel() {
       <div style={{ padding: '10px 20px', borderBottom: '1px solid #e0e0e0', flexShrink: 0 }}>
         <input
           type="text"
-          placeholder="🔍 검색..."
+          placeholder="검색..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           style={{ width: '100%', padding: '7px 12px', fontSize: '13px', border: '1px solid #ddd', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}

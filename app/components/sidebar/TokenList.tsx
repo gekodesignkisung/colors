@@ -4,7 +4,12 @@ import { useState } from 'react';
 import { useColorStore } from '@/store/colorStore';
 import TokenCard from './TokenCard';
 
-export default function TokenList() {
+interface TokenListProps {
+  showNext?: boolean;
+  onNext?: () => void;
+}
+
+export default function TokenList({ showNext, onNext }: TokenListProps) {
   const tokens = useColorStore(s => s.tokens);
   const { isDark, toggleDark } = useColorStore();
 

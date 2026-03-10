@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useColorStore, ProjectData } from '@/store/colorStore';
 import KeyColorEditPopup from '@/app/components/KeyColorEditPopup';
 import ColorPicker from '@/app/components/ColorPicker';
@@ -33,7 +33,12 @@ function getAutoModeDisplay(
 
 const CORE_KEYS = new Set(['primary', 'secondary', 'tertiary', 'neutral']);
 
-export default function BaseColorInput() {
+interface BaseColorInputProps {
+  introStep?: number;
+  onNext?: () => void;
+}
+
+export default function BaseColorInput({ introStep, onNext }: BaseColorInputProps) {
   const {
     baseColors, groupOrder, groupLabels, groupDescriptions,
     setBaseColor, setGroupLabel, setGroupDescription,
@@ -43,12 +48,15 @@ export default function BaseColorInput() {
     newProject, saveProject, loadProject,
     keyGenSettings, setKeyGenSettings,
     globalGenerationMode, setGlobalGenerationMode,
+    groupEnabled, setGroupEnabled,
   } = useColorStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // store the coordinates where user clicked to open edit popup
+  const [editPopupPos, setEditPopupPos] = useState<{ x: number; y: number } | null>(null);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null);
@@ -185,6 +193,8 @@ export default function BaseColorInput() {
 
       {/* Info row */}
       <div className="flex items-center justify-between shrink-0 h-[40px] bg-[#f5f5f5] border-b border-[#dddddf] px-[15px]">
+        <span className="text-[13px] font-semibold text-[#999]">Project name</span>
+        {/* actual project name (click to edit) */}
         {editingName ? (
           <input
             ref={nameInputRef}
@@ -194,26 +204,17 @@ export default function BaseColorInput() {
             onBlur={commitName}
             onKeyDown={e => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(false); }}
             aria-label="프로젝트 이름"
-            className="flex-1 text-[13px] font-semibold text-[#333] bg-transparent outline-none border-b border-[#aaa] min-w-0"
+            className="text-[13px] font-normal text-[#333] bg-transparent outline-none border-b border-[#aaa] min-w-0 text-right"
           />
         ) : (
           <button
             type="button"
             onClick={startEditingName}
-            className="flex-1 text-left text-[13px] font-semibold text-[#333] truncate hover:text-[#555] transition-colors min-w-0"
+            className="text-[13px] font-normal text-[#333] truncate hover:text-[#555] transition-colors min-w-0 text-right"
           >
             {projectName}
           </button>
         )}
-        <select
-          aria-label="Key color generation mode"
-          value={globalGenerationMode}
-          onChange={e => setGlobalGenerationMode(e.target.value as 'manual' | 'auto')}
-          className="shrink-0 h-7 pl-[6px] pr-8 border border-[#ddd] rounded-[6px] text-[12px] font-medium text-[#333] outline-none focus:border-[#808088] bg-white accent-[#999] generation-select"
-        >
-          <option value="manual">Manual</option>
-          <option value="auto">Auto</option>
-        </select>
       </div>
 
       {/* Content area */}
@@ -221,22 +222,25 @@ export default function BaseColorInput() {
         <div className="flex flex-col gap-0">
           {/* Color cards */}
           <div className="flex flex-col gap-0 pt-2">
-            {groupOrder.map((key) => {
+            {groupOrder.map((key, idx) => {
               const label = groupLabels[key] ?? key;
               const raw = baseColors[key] ?? '#000000';
               const valueDisplay = globalGenerationMode === 'auto'
                 ? getAutoModeDisplay(key, keyGenSettings, groupLabels)
                 : (useOklch ? toOklchLabel(raw) : raw.toUpperCase());
-              return (
+              const enabled = groupEnabled[key] ?? true;
+              const element = (
                 <div
                   key={key}
-                  className="flex items-center min-h-[64px] w-full px-5 py-2 hover:bg-[#f5f5f5] transition-colors border-b border-[#f0f0f0]"
+                  title="컬러 설정 수정하기"
+                  className={`flex items-center min-h-[64px] w-full px-5 py-2 transition-colors border-b border-[#f0f0f0] ${enabled ? '' : 'opacity-50 cursor-not-allowed'}`}
                 >
                   {/* Swatch — 클릭 시 바로 ColorPicker */}
                   <button
                     type="button"
+                    disabled={!enabled}
                     onClick={e => { setPickerKey(key); setPickerPos({ x: e.clientX, y: e.clientY }); }}
-                    className="shrink-0 hover:scale-110 transition-transform"
+                    className={`shrink-0 transition-transform ${enabled ? 'hover:scale-110' : ''}`}
                     title="클릭하여 색상 선택"
                   >
                     <ColorShape color={raw} size={48} />
@@ -244,22 +248,77 @@ export default function BaseColorInput() {
                   {/* Label + value — 클릭 시 KeyColorEditPopup */}
                   <button
                     type="button"
-                    onClick={() => setSelectedKey(key)}
+                    disabled={!enabled}
+                    onClick={e => {
+                      setSelectedKey(key);
+                      setEditPopupPos({ x: e.clientX, y: e.clientY });
+                    }}
                     className="pl-4 flex flex-col gap-0.5 flex-1 text-left min-w-0"
                   >
                     <span className="font-semibold text-sm text-[#333333] leading-tight">{label}</span>
-                    <span className="text-xs font-medium text-[#999999] font-mono">
+                    <span className="text-[11px] font-medium text-[#999999] font-mono">
                       {valueDisplay}
                     </span>
                   </button>
+                  {/* optional enable/disable switch for secondary/tertiary */}
+                  {(key === 'secondary' || key === 'tertiary') && (
+                    <button
+                      type="button"
+                      onClick={() => setGroupEnabled(key, !enabled)}
+                      className="ml-2 flex-shrink-0 pointer-events-auto mr-[-5px]"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={enabled ? '/icon-switch-on.svg' : '/icon-switch-off.svg'}
+                        alt=""
+                        width={40}
+                        height={24}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
                 </div>
               );
+              // after fourth card, place next button if at step0
+              if (idx === 3 && introStep === 0 && onNext) {
+                return (
+                  <React.Fragment key="after-4">
+                    {element}
+                    {/* generate button should sit above the next button when auto mode */}
+                    {globalGenerationMode === 'auto' && (
+                      <div className="p-5">
+                        <button
+                          type="button"
+                          onClick={randomizeColors}
+                          className="w-full flex items-center justify-center h-[50px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] gap-2 cursor-pointer hover:opacity-75 transition-opacity"
+                        >
+                          <div className="flex items-center justify-center shrink-0 w-8 h-8">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/icon-generate.svg" alt="" width={22} height={22} aria-hidden="true" />
+                          </div>
+                          <span className="font-semibold text-sm text-[#333333]">Generate</span>
+                        </button>
+                      </div>
+                    )}
+                    <div className="p-3">
+                      <button
+                        type="button"
+                        className="w-[90px] h-[90px] bg-white text-[#999] border-2 border-[#999] rounded-full flex items-center justify-center mx-auto whitespace-nowrap mt-[30px]"
+                        onClick={onNext}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </React.Fragment>
+                );
+              }
+              return element;
             })}
 
           </div>
 
-          {/* Generate button (only in auto mode) */}
-          {globalGenerationMode === 'auto' && (
+          {/* Generate button -- shown here when auto mode and not already rendered above next */}
+          {globalGenerationMode === 'auto' && !(introStep === 0 && onNext) && (
             <div className="p-5">
               <button
                 type="button"
@@ -275,6 +334,27 @@ export default function BaseColorInput() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Auto mode toggle (replaces header dropdown) */}
+      <div className="shrink-0 px-5 py-3 border-t border-[#ebebeb] bg-white">
+        <button
+          type="button"
+          title={globalGenerationMode === 'auto' ? 'Auto mode on' : 'Auto mode off'}
+          aria-label="Key color generation mode"
+          onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
+          className="flex items-center justify-between w-full group"
+        >
+          <div className="text-left">
+            <p className={`text-xs font-semibold leading-tight transition-colors ${globalGenerationMode === 'auto' ? 'text-[#707077]' : 'text-[#333]'}`}
+            >
+              Auto mode
+            </p>
+            <p className="text-[11px] text-[#aaa] mt-0.5 leading-tight">Key color generation</p>
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={globalGenerationMode === 'auto' ? '/icon-switch-on.svg' : '/icon-switch-off.svg'} alt="" width={40} height={24} aria-hidden="true" />
+        </button>
       </div>
 
       {/* OKLCH toggle */}
@@ -315,6 +395,7 @@ export default function BaseColorInput() {
       {/* Edit popup */}
       {selectedKey && (
         <KeyColorEditPopup
+          anchorPos={editPopupPos ?? undefined}
           colorKey={selectedKey}
           initialHex={baseColors[selectedKey] ?? '#000000'}
           initialLabel={groupLabels[selectedKey] ?? selectedKey}
@@ -322,7 +403,7 @@ export default function BaseColorInput() {
           isCore={CORE_KEYS.has(selectedKey)}
           globalGenerationMode={globalGenerationMode}
           onSave={(hex, label, desc) => handleSave(selectedKey, hex, label, desc)}
-          onClose={() => setSelectedKey(null)}
+          onClose={() => { setSelectedKey(null); setEditPopupPos(null); }}
           onRemove={!CORE_KEYS.has(selectedKey) ? () => removeGroup(selectedKey) : undefined}
         />
       )}

@@ -10,6 +10,7 @@ import { buildFormulaString } from '@/lib/generateTokens';
 import { KeyColorGenSettings, KeyColorAutoSettings, OpGenSettings, RangeGenSettings } from '@/types/tokens';
 
 interface KeyColorEditPopupProps {
+  anchorPos?: { x: number; y: number };
   colorKey: string;
   initialHex: string;
   initialLabel: string;
@@ -34,6 +35,7 @@ const OPERATION_BUTTONS = [
 ];
 
 export default function KeyColorEditPopup({
+  anchorPos,
   colorKey,
   initialHex,
   initialLabel,
@@ -258,12 +260,25 @@ export default function KeyColorEditPopup({
   );
 
   // Manual mode
+  const getPositionStyle = () => {
+    if (anchorPos) {
+      return {
+        top: anchorPos.y + 'px',
+        // bring popup even closer to click point
+        left: anchorPos.x + 30 + 'px',
+      } as React.CSSProperties;
+    }
+    // default fallback positions
+    return { top: '200px', left: '150px' } as React.CSSProperties;
+  };
+
   if (globalGenerationMode === 'manual') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+      <div className="fixed inset-0 z-50 bg-black/30">
         <div
           ref={popupRef}
-          className="bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[640px] flex flex-col overflow-hidden relative"
+          style={getPositionStyle()}
+          className="absolute bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[640px] flex flex-col overflow-hidden relative"
         >
           {Header}
 
@@ -321,10 +336,11 @@ export default function KeyColorEditPopup({
 
   // Auto mode
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+    <div className="fixed inset-0 z-50 bg-black/30">
       <div
         ref={popupRef}
-        className="bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[900px] flex flex-col overflow-hidden relative"
+        style={getPositionStyle()}
+        className="absolute bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[900px] flex flex-col overflow-hidden relative"
       >
         {Header}
 

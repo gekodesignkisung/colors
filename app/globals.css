@@ -29,6 +29,12 @@ body {
   user-select: none !important;
 }
 
+/* but allow selection inside interactive/text elements so users can copy text even when tokens are being applied */
+.preview-area[data-edit-mode="true"] * {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
 .preview-area[data-edit-mode="false"] {
   -webkit-user-select: text;
   user-select: text;
@@ -42,7 +48,7 @@ body {
 /* Hover effect for clickable elements in edit mode */
 .preview-area[data-edit-mode="true"] [id] {
   transition: opacity 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
-  cursor: pointer !important;
+  cursor: crosshair !important; /* always show crosshair during edit */
 }
 
 /* remove the dimming/highlight on hover; keeping pointer only */

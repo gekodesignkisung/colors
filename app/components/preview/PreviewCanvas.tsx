@@ -30,8 +30,27 @@ function PreviewCanvasInner() {
   // counter used to generate ids for elements that don't already have one
   const autoIdRef = useRef(0);
 
+  // When entering edit mode we also walk the tree and give ids to
+  // any elements that contain text but don’t already have one. this makes
+  // it easier to pick the correct token (e.g. button labels) without
+  // manually wrapping every piece in a span.
   useEffect(() => {
     if (!isEditMode || !previewRef.current) return;
+
+    const assignIds = (root: HTMLElement) => {
+      const nodes = Array.from(root.querySelectorAll<HTMLElement>('*'));
+      nodes.forEach(el => {
+        if (!el.id) {
+          // if element has non-whitespace text and is not purely structural,
+          // give it an id so it can be targeted independently.
+          if (el.textContent && el.textContent.trim()) {
+            el.id = `preview-auto-${autoIdRef.current++}`;
+          }
+        }
+      });
+    };
+
+    assignIds(previewRef.current);
 
     const handleClick = (e: MouseEvent) => {
       // we no longer bail out just because there happens to be a text selection
@@ -41,9 +60,22 @@ function PreviewCanvasInner() {
 
       let target = e.target as Node;
 
-      // If target is a text node, get its parent element
+      // If target is a text node, wrap it in a span so it can receive its own id
       if (target.nodeType === Node.TEXT_NODE) {
-        target = target.parentNode as Node;
+        const textNode = target as Text;
+        const parent = textNode.parentNode as HTMLElement | null;
+        if (parent) {
+          // create a span around the text node unless already wrapped
+          if (parent.nodeName !== 'SPAN' || !parent.hasAttribute('data-preview-text')) {
+            const span = document.createElement('span');
+            span.setAttribute('data-preview-text', '');
+            parent.replaceChild(span, textNode);
+            span.appendChild(textNode);
+            target = span; // continue with this new span
+          } else {
+            target = parent;
+          }
+        }
       }
 
       // find closest ancestor with an explicit id

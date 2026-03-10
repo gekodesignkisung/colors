@@ -22,7 +22,12 @@ const SECTIONS: { key: SectionKey; label: string; desc: string; isSingle?: boole
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function NamingPanel() {
+interface NamingPanelProps {
+  showNext?: boolean;
+  onNext?: () => void;
+}
+
+export default function NamingPanel({ showNext, onNext }: NamingPanelProps) {
   // ── Store state ──
   const namingNamespace = useColorStore(s => s.namingNamespace);
   const namingOrder     = useColorStore(s => s.namingOrder);
@@ -356,6 +361,17 @@ export default function NamingPanel() {
             </div>
           );
         })}
+        {showNext && onNext && (
+          <div className="p-3 flex justify-center mt-[30px]">
+            <button
+              type="button"
+              className="w-[90px] h-[90px] bg-white text-[#999] border-2 border-[#999] rounded-full flex items-center justify-center mx-auto whitespace-nowrap"
+              onClick={onNext}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Toast notification */}
