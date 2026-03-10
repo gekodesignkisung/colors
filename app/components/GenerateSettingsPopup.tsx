@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function GenerateSettingsPopup({ onClose }: Props) {
-  const { groupOrder, groupLabels, baseColors, generateRules, setGenerateRule, setDefaultGenerateRules } = useColorStore();
+  const { groupOrder, groupLabels, baseColors, generateRules, setGenerateRule, setDefaultGenerateRules, useOklch } = useColorStore();
   const popupRef = useRef<HTMLDivElement>(null);
 
   const [localRules, setLocalRules] = useState<Record<string, GenerateRule>>(() =>
@@ -91,9 +91,26 @@ export default function GenerateSettingsPopup({ onClose }: Props) {
                   <span className="font-semibold text-[14px] text-[#333]">{label}</span>
                 </div>
                 <div className="flex flex-col gap-2.5 pl-[52px]">
-                  <RangeRow label="H" floor={0} ceil={360} value={rule.h} onChange={v => updateRule(key, 'h', v)} />
-                  <RangeRow label="S" floor={0} ceil={100} value={rule.s} onChange={v => updateRule(key, 's', v)} />
-                  <RangeRow label="L" floor={0} ceil={100} value={rule.l} onChange={v => updateRule(key, 'l', v)} />
+                  {(
+                    useOklch ? ['l', 's', 'h'] : ['h', 's', 'l']
+                  ).map(channel => {
+                    const labelMap: Record<string, string> = useOklch
+                      ? { l: 'L', s: 'C', h: 'H' }
+                      : { h: 'H', s: 'S', l: 'L' };
+                    const floorMap: Record<string, number> = { h: 0, s: 0, l: 0 };
+                    const ceilMap: Record<string, number> = { h: 360, s: 100, l: 100 };
+                    const value = (rule as any)[channel];
+                    return (
+                      <RangeRow
+                        key={channel}
+                        label={labelMap[channel]}
+                        floor={floorMap[channel]}
+                        ceil={ceilMap[channel]}
+                        value={value}
+                        onChange={v => updateRule(key, channel as 'h' | 's' | 'l', v)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             );

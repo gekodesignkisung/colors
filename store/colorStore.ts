@@ -66,11 +66,11 @@ export const DEFAULT_KEY_GEN_SETTINGS: Record<string, KeyColorGenSettings> = {
   },
   secondary: {
     mode: 'auto',
-    autoSettings: { kind: 'operation', sourceKey: 'primary', operation: 'colorShift', param: 60 } as KeyColorAutoSettings,
+    autoSettings: { kind: 'operation', sourceKey: 'primary', stage1: 'source', operation: 'colorShift', param: 60 } as KeyColorAutoSettings,
   },
   tertiary: {
     mode: 'auto',
-    autoSettings: { kind: 'operation', sourceKey: 'primary', operation: 'colorShift', param: 120 } as KeyColorAutoSettings,
+    autoSettings: { kind: 'operation', sourceKey: 'primary', stage1: 'source', operation: 'colorShift', param: 120 } as KeyColorAutoSettings,
   },
   neutral: {
     mode: 'auto',
@@ -103,6 +103,10 @@ interface ColorStore {
   groupOrder: string[];
   groupLabels: Record<string, string>;
   groupDescriptions: Record<string, string>;
+  // whether each key color card is currently enabled/visible
+  groupEnabled: Record<string, boolean>;
+  // helper used internally to filter tokens by the above flags
+  _filterTokensByEnabled: (tokens: DesignToken[]) => DesignToken[];
   useOklch: boolean;
   generateRules: Record<string, GenerateRule>;
   keyGenSettings: Record<string, KeyColorGenSettings>;
@@ -111,12 +115,18 @@ interface ColorStore {
   defaultGenerateRules: Record<string, GenerateRule>;
   defaultTokenFormulaMode: 'formula' | 'manual';
   defaultTokenFormula: { operation: string; source: string; param: number };
+  setGroupEnabled: (key: string, enabled: boolean) => void;
+  setDefaultNamingNamespace: (ns: string) => void;
+  setDefaultNamingValues: (key: string, values: string[]) => void;
 
   // Naming config
   namingNamespace: string;
   namingOrder: string[];
   namingEnabled: string[];
   namingValues: Record<string, string[]>;
+  // user-adjustable default naming rules (persisted separately)
+  defaultNamingNamespace: string;
+  defaultNamingValues: Record<string, string[]>;
 
   // Preview element token assignments
   previewAssignments: Record<string, string>;
@@ -167,6 +177,7 @@ export interface ProjectData {
   groupOrder: string[];
   groupLabels: Record<string, string>;
   groupDescriptions: Record<string, string>;
+  groupEnabled?: Record<string, boolean>;
   namingNamespace: string;
   namingOrder: string[];
   namingEnabled: string[];
@@ -247,6 +258,10 @@ export const useColorStore = create<ColorStore>()(
     tertiary: true,
     neutral: true,
   } as Record<string, boolean>,
+  _filterTokensByEnabled: (tokens: any[]) => {
+    const enabled = get().groupEnabled;
+    return tokens.filter(t => enabled[t.group] ?? true);
+  },
 
   previewAssignments: {},
 
@@ -263,11 +278,6 @@ export const useColorStore = create<ColorStore>()(
       return { previewAssignments: next };
     }),
 
-  // helper used internally to strip out any tokens whose variant group is disabled
-  _filterTokensByEnabled: (tokens: any[]) => {
-    const enabled = get().groupEnabled;
-    return tokens.filter(t => enabled[t.group] ?? true);
-  },
 
   setBaseColor: (key, hex) => {
     const baseColors = { ...get().baseColors, [key]: hex };
@@ -280,9 +290,9 @@ export const useColorStore = create<ColorStore>()(
   },
 
   // toggle whether a key color is enabled/visible
-  setGroupEnabled: (key, enabled) => {
+  setGroupEnabled: (key: string, enabled: boolean) => {
     set(state => {
-      const ge = { ...state.groupEnabled, [key]: enabled };
+      const ge: Record<string, boolean> = { ...state.groupEnabled, [key]: enabled };
       // regenerate tokens to reflect new enabled set
       let tokens = generateTokensFromNaming(state.baseColors, makeNamingConfig(state), state.isDark, state.useOklch);
       // use the updated flags when filtering
@@ -290,6 +300,7 @@ export const useColorStore = create<ColorStore>()(
       return { groupEnabled: ge, tokens };
     });
   },
+
 
   randomizeColors: () => {
     const { groupOrder, baseColors: prev, generateRules, keyGenSettings, groupEnabled } = get();
@@ -310,7 +321,7 @@ export const useColorStore = create<ColorStore>()(
         resolved[k] = prev[k] ?? generateRandomColor();
       } else if (kgs.autoSettings.kind === 'range') {
         const rule = (kgs.autoSettings as any).rule ?? generateRules[k] ?? DEFAULT_GENERATE_RULES[k];
-        resolved[k] = rule ? generateRandomColorInRange(rule) : generateRandomColor();
+        resolved[k] = rule ? generateRandomColorInRange(rule, get().useOklch) : generateRandomColor();
       }
     }
 
@@ -321,9 +332,10 @@ export const useColorStore = create<ColorStore>()(
       const kgs = keyGenSettings[k];
       console.log(`Pass 2 - ${k}:`, kgs, '- kind:', kgs?.autoSettings.kind);
       if (kgs?.mode === 'auto' && kgs.autoSettings.kind === 'operation') {
-        const { sourceKey, operation, param } = kgs.autoSettings as OpGenSettings;
-        const fakeRule: any = { operation, source: sourceKey, param, description: '' };
-        console.log(`Applying operation ${operation} for ${k}`);
+        const { sourceKey, stage1, operation, param } = kgs.autoSettings as OpGenSettings;
+        // stage1 may be undefined (defaults to 'source')
+        const fakeRule: any = { stage1: stage1 ?? 'source', operation, source: sourceKey, param, description: '' };
+        console.log(`Applying operation ${operation} for ${k} with stage1=${stage1}`);
         resolved[k] = applyRule(fakeRule, { ...resolved }, get().isDark, get().useOklch);
       }
     }
@@ -455,8 +467,8 @@ export const useColorStore = create<ColorStore>()(
     const { keyGenSettings, baseColors, isDark, useOklch } = get();
     const kgs = keyGenSettings[key];
     if (!kgs || kgs.mode === 'manual' || kgs.autoSettings.kind === 'range') return;
-    const { sourceKey, operation, param } = kgs.autoSettings as OpGenSettings;
-    const fakeRule: any = { operation, source: sourceKey, param, description: '' };
+    const { sourceKey, stage1, operation, param } = kgs.autoSettings as OpGenSettings;
+    const fakeRule: any = { stage1: stage1 ?? 'source', operation, source: sourceKey, param, description: '' };
     const newHex = applyRule(fakeRule, baseColors, isDark, useOklch);
     const newBase = { ...baseColors, [key]: newHex };
     let tokens = generateTokensFromNaming(newBase, makeNamingConfig(get()), isDark, useOklch);

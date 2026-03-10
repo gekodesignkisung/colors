@@ -2,12 +2,38 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { hexToHSL, hexToOKLCH, isValidHex, normalizeHex } from '@/lib/colorUtils';
+import { applyRule } from '@/lib/generateTokens';
 import { ColorShape } from '@/app/components/ColorShape';
 import ColorPicker from '@/app/components/ColorPicker';
 import { RangeRow } from '@/app/components/RangeRow';
 import { useColorStore, DEFAULT_GENERATE_RULE } from '@/store/colorStore';
 import { buildFormulaString } from '@/lib/generateTokens';
 import { KeyColorGenSettings, KeyColorAutoSettings, OpGenSettings, RangeGenSettings } from '@/types/tokens';
+
+// stage definitions for formula UI (mirrors TokenEditPopup)
+
+interface Stage1Meta { value: 'source' | 'grayscale' | 'invert'; label: string; }
+const STAGE1_OPS: Stage1Meta[] = [
+  { value: 'source',    label: 'Source'    },
+  { value: 'grayscale', label: 'Grayscale' },
+  { value: 'invert',    label: 'Invert'    },
+];
+
+interface Stage2Meta {
+  value: string; // TokenOperation
+  label: string;
+  hasParam: boolean;
+  paramLabel: string;
+  defaultParam: number;
+}
+const STAGE2_OPS: Stage2Meta[] = [
+  { value: 'source',        label: 'None',         hasParam: false, paramLabel: '',            defaultParam: 0  },
+  { value: 'setLightness',  label: 'Lightness',    hasParam: true,  paramLabel: 'L %',         defaultParam: 50 },
+  { value: 'setSaturation', label: 'Saturation',   hasParam: true,  paramLabel: 'S %',         defaultParam: 50 },
+  { value: 'colorShift',    label: 'Color Shift',  hasParam: true,  paramLabel: 'Hue shift °', defaultParam: 30 },
+  { value: 'lighten',       label: 'Lighten (+)',  hasParam: true,  paramLabel: 'Amount %',    defaultParam: 15 },
+  { value: 'darken',        label: 'Darken (−)',   hasParam: true,  paramLabel: 'Amount %',    defaultParam: 15 },
+];
 
 interface KeyColorEditPopupProps {
   anchorPos?: { x: number; y: number };
@@ -22,17 +48,7 @@ interface KeyColorEditPopupProps {
   onRemove?: () => void;
 }
 
-const OPERATION_BUTTONS = [
-  { label: 'Source',     value: 'source',       group: 0, hasParam: false, max: 0   },
-  { label: 'Grayscale',  value: 'grayscale',    group: 0, hasParam: false, max: 0   },
-  { label: 'Invert',     value: 'invert',       group: 0, hasParam: false, max: 0   },
-  { label: 'Contrast',   value: 'contrast',     group: 1, hasParam: false, max: 0   },
-  { label: 'Lightness',  value: 'setLightness', group: 1, hasParam: true,  max: 100 },
-  { label: 'Saturation', value: 'setSaturation',group: 1, hasParam: true,  max: 100 },
-  { label: 'Color Shift',value: 'colorShift',   group: 2, hasParam: true,  max: 360 },
-  { label: 'Lighten (+)',value: 'lighten',       group: 2, hasParam: true,  max: 100 },
-  { label: 'Darken (−)', value: 'darken',        group: 2, hasParam: true,  max: 100 },
-];
+
 
 export default function KeyColorEditPopup({
   anchorPos,
@@ -54,10 +70,16 @@ export default function KeyColorEditPopup({
   const [localGenSettings, setLocalGenSettings] = useState<KeyColorGenSettings | null>(null);
   const [showToast, setShowToast] = useState(false);
 
+  // formula editor state (stage1/stage2/style)
+  const [stage1, setStage1] = useState<'source' | 'grayscale' | 'invert'>('source');
+  const [stage2Op, setStage2Op] = useState<string>('source');
+  const [stage2Param, setStage2Param] = useState<number>(0);
+  const [sourceKey, setSourceKey] = useState<string>('primary');
+
   const popupRef  = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLInputElement>(null);
 
-  const { keyGenSettings, setKeyGenSettings, recomputeDerivedColor, groupLabels, groupOrder, setDefaultKeyGenSettings, useOklch } = useColorStore();
+  const { keyGenSettings, setKeyGenSettings, recomputeDerivedColor, groupLabels, groupOrder, setDefaultKeyGenSettings, useOklch, baseColors } = useColorStore();
   const settings = keyGenSettings[colorKey];
   const currentSettings = localGenSettings || settings;
 
@@ -66,7 +88,16 @@ export default function KeyColorEditPopup({
     setLabel(initialLabel);
     setDesc(initialDescription);
     setLocalGenSettings(null);
-  }, [colorKey, initialHex, initialLabel, initialDescription]);
+
+    // initialize auto settings fields from store (if available)
+    if (settings && settings.mode === 'auto' && settings.autoSettings.kind === 'operation') {
+      const op = settings.autoSettings as OpGenSettings;
+      setSourceKey(op.sourceKey);
+      setStage1(op.stage1 ?? 'source');
+      setStage2Op(op.operation);
+      setStage2Param(op.param);
+    }
+  }, [colorKey, initialHex, initialLabel, initialDescription, settings]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -90,8 +121,26 @@ export default function KeyColorEditPopup({
   const handleSave = () => {
     const finalHex = isValidHex(hex) ? normalizeHex(hex) : initialHex;
     const finalLabel = label.trim() || initialLabel;
+    // first handle any range/manual overrides stored in localGenSettings
     if (localGenSettings) {
       setKeyGenSettings(colorKey, localGenSettings);
+      if (isOperationBased) {
+        recomputeDerivedColor(colorKey);
+      }
+    }
+    // build and save auto settings if this key uses operation mode and not already handled above
+    if (isOperationBased && currentSettings && currentSettings.mode === 'auto') {
+      const newSettings: KeyColorGenSettings = {
+        mode: 'auto',
+        autoSettings: {
+          kind: 'operation',
+          sourceKey,
+          stage1,
+          operation: stage2Op as any,
+          param: stage2Param,
+        } as OpGenSettings,
+      };
+      setKeyGenSettings(colorKey, newSettings);
       recomputeDerivedColor(colorKey);
     }
     onSave(finalHex, finalLabel, desc);
@@ -104,39 +153,67 @@ export default function KeyColorEditPopup({
   const handleReset = () => {
     const defaults: Record<string, KeyColorGenSettings> = {
       primary:   { mode: 'manual', autoSettings: { kind: 'range', rule: { ...DEFAULT_GENERATE_RULE } } },
-      secondary: { mode: 'auto',   autoSettings: { kind: 'operation', sourceKey: 'primary', operation: 'colorShift', param: 60 } },
-      tertiary:  { mode: 'auto',   autoSettings: { kind: 'operation', sourceKey: 'primary', operation: 'colorShift', param: 120 } },
+      secondary: { mode: 'auto',   autoSettings: { kind: 'operation', sourceKey: 'primary', stage1: 'source', operation: 'colorShift', param: 60 } },
+      tertiary:  { mode: 'auto',   autoSettings: { kind: 'operation', sourceKey: 'primary', stage1: 'source', operation: 'colorShift', param: 120 } },
       neutral:   { mode: 'auto',   autoSettings: { kind: 'range', rule: { h:{min:0,max:360}, s:{min:0,max:15}, l:{min:20,max:75} } } },
     };
-    setKeyGenSettings(colorKey, defaults[colorKey] || defaults.primary);
+    const def = defaults[colorKey] || defaults.primary;
+    setKeyGenSettings(colorKey, def);
+    // if we are in operation-based editing, also sync UI state
+    if (isOperationBased && def.mode === 'auto' && def.autoSettings.kind === 'operation') {
+      const op = def.autoSettings as OpGenSettings;
+      setSourceKey(op.sourceKey);
+      setStage1(op.stage1 ?? 'source');
+      setStage2Op(op.operation);
+      setStage2Param(op.param);
+    }
   };
 
   const handleSetAsDefault = () => {
     if (currentSettings) {
-      if (localGenSettings) {
-        setKeyGenSettings(colorKey, localGenSettings);
+      // first commit any pending edits
+      if (isOperationBased && currentSettings.mode === 'auto') {
+        const newSettings: KeyColorGenSettings = {
+          mode: 'auto',
+          autoSettings: {
+            kind: 'operation',
+            sourceKey,
+            stage1,
+            operation: stage2Op as any,
+            param: stage2Param,
+          } as OpGenSettings,
+        };
+        setKeyGenSettings(colorKey, newSettings);
         recomputeDerivedColor(colorKey);
+        setDefaultKeyGenSettings(colorKey, newSettings);
+      } else if (localGenSettings) {
+        // range or manual overrides
+        setKeyGenSettings(colorKey, localGenSettings);
+        setDefaultKeyGenSettings(colorKey, localGenSettings);
+      } else {
+        setDefaultKeyGenSettings(colorKey, currentSettings);
       }
-      setDefaultKeyGenSettings(colorKey, currentSettings);
       setShowToast(true);
     }
   };
 
-  const handleSourceChange = (sourceKey: string) => {
-    if (!currentSettings || currentSettings.autoSettings.kind !== 'operation') return;
-    setLocalGenSettings({ mode: 'auto', autoSettings: { ...(currentSettings.autoSettings as OpGenSettings), sourceKey } });
+  const handleSourceChange = (key: string) => {
+    setSourceKey(key);
   };
 
-  const handleOperationChange = (operation: string) => {
-    if (!currentSettings || currentSettings.autoSettings.kind !== 'operation') return;
-    const opSettings = currentSettings.autoSettings as OpGenSettings;
-    const btn = OPERATION_BUTTONS.find(b => b.value === operation);
-    setLocalGenSettings({ mode: 'auto', autoSettings: { ...opSettings, operation: operation as any, param: opSettings.param || (btn?.max ?? 50) } });
+  const handleStage1Change = (val: 'source' | 'grayscale' | 'invert') => {
+    setStage1(val);
   };
 
-  const handleParamChange = (param: number) => {
-    if (!currentSettings || currentSettings.autoSettings.kind !== 'operation') return;
-    setLocalGenSettings({ mode: 'auto', autoSettings: { ...(currentSettings.autoSettings as OpGenSettings), param } as KeyColorAutoSettings });
+  const handleStage2Change = (op: string) => {
+    setStage2Op(op);
+    const meta = STAGE2_OPS.find(o => o.value === op);
+    if (meta?.hasParam) setStage2Param(meta.defaultParam);
+    else setStage2Param(0);
+  };
+
+  const handleStage2ParamChange = (param: number) => {
+    setStage2Param(param);
   };
 
   const handleRangeChange = (channel: 'h' | 's' | 'l', value: { min: number; max: number }) => {
@@ -150,17 +227,35 @@ export default function KeyColorEditPopup({
   const isNeutral = colorKey === 'neutral';
   const isOperationBased = !isPrimary && !isNeutral;
 
-  const opSettings = currentSettings?.autoSettings.kind === 'operation' ? (currentSettings.autoSettings as OpGenSettings) : null;
   const rangeSettings = currentSettings?.autoSettings.kind === 'range' ? (currentSettings.autoSettings as RangeGenSettings) : null;
-  const sourceLabel = opSettings ? groupLabels[opSettings.sourceKey] ?? opSettings.sourceKey : '';
-  const currentOpBtn = opSettings ? OPERATION_BUTTONS.find(b => b.value === opSettings.operation) : null;
+  const sourceLabel = groupLabels[sourceKey] ?? sourceKey;
 
-  // Sync slider fill CSS variable
+  // compute preview color for the swatch
+  const previewColor = (() => {
+    if (localGenSettings) {
+      // if user edited a range or manual override, show that
+      if (localGenSettings.mode === 'manual') return isValidHex(hex) ? normalizeHex(hex) : initialHex;
+      if (localGenSettings.autoSettings.kind === 'range') return displayHex;
+      // operation mode inside localGenSettings
+      const op = localGenSettings.autoSettings as OpGenSettings;
+      const rule: any = { stage1: op.stage1 ?? 'source', operation: op.operation, source: op.sourceKey, param: op.param, description: '' };
+      return applyRule(rule, baseColors, false, useOklch);
+    }
+    if (isOperationBased && currentSettings && currentSettings.mode === 'auto' && currentSettings.autoSettings.kind === 'operation') {
+      const rule: any = { stage1, operation: stage2Op, source: sourceKey, param: stage2Param, description: '' };
+      return applyRule(rule, baseColors, false, useOklch);
+    }
+    // otherwise manual value or non-operation
+    if (currentSettings?.mode === 'manual') return isValidHex(hex) ? normalizeHex(hex) : initialHex;
+    return displayHex;
+  })();
+
+  // Sync slider fill CSS variable for our stage2 parameter
   useEffect(() => {
-    if (!sliderRef.current || !opSettings) return;
-    const max = currentOpBtn?.max ?? 100;
-    sliderRef.current.style.setProperty('--pct', `${(opSettings.param / max) * 100}%`);
-  }, [opSettings?.param, currentOpBtn?.max]);
+    if (!sliderRef.current) return;
+    const max = stage2Op === 'colorShift' ? 360 : 100;
+    sliderRef.current.style.setProperty('--pct', `${(stage2Param / max) * 100}%`);
+  }, [stage2Param, stage2Op]);
 
   /* ── Shared sub-components ── */
   const SwatchCol = (
@@ -171,11 +266,11 @@ export default function KeyColorEditPopup({
         className="hover:opacity-90 transition-opacity"
         title="클릭하여 색상 선택"
       >
-        <ColorShape color={displayHex} size={120} />
+        <ColorShape color={previewColor} size={120} />
       </button>
       <div className="flex flex-col items-center gap-0.5 w-full">
         {useOklch ? (() => {
-          const ok = hexToOKLCH(displayHex);
+          const ok = hexToOKLCH(previewColor);
           return (
             <>
               <span className="text-[10px] font-medium text-[#aaa] uppercase tracking-wider">OKLCH</span>
@@ -187,7 +282,7 @@ export default function KeyColorEditPopup({
         })() : (
           <>
             <span className="text-[10px] font-medium text-[#aaa] uppercase tracking-wider">HEX</span>
-            <span className="text-[11px] font-semibold font-mono text-[#333]">{displayHex.toUpperCase()}</span>
+            <span className="text-[11px] font-semibold font-mono text-[#333]">{previewColor.toUpperCase()}</span>
           </>
         )}
       </div>
@@ -374,14 +469,14 @@ export default function KeyColorEditPopup({
 
           {/* Col 3: Generation Settings */}
           <div className="bg-white flex-1 flex flex-col gap-5 p-6 overflow-y-auto min-w-0">
-            {isOperationBased && opSettings && (
+            {isOperationBased && (
               <>
-                {/* Source color */}
+                {/* Source color selector */}
                 <div className="flex flex-col gap-2">
                   <label className="font-semibold text-[12px] text-[#666]">Source color</label>
                   <select
                     aria-label="Source color"
-                    value={opSettings.sourceKey}
+                    value={sourceKey}
                     onChange={e => handleSourceChange(e.target.value)}
                     className="h-9 px-3 border border-[#dddddd] rounded-[10px] text-[14px] font-medium text-[#333] outline-none focus:border-[#808088] bg-white appearance-none cursor-pointer"
                   >
@@ -391,24 +486,49 @@ export default function KeyColorEditPopup({
                   </select>
                 </div>
 
-                {/* Operation buttons */}
+                {/* Stage 1 */}
                 <div className="flex flex-col gap-2">
-                  <label className="font-semibold text-[12px] text-[#666]">Operation</label>
+                  <label className="font-semibold text-[12px] text-[#666]">Stage 1</label>
+                  <div className="flex gap-2">
+                    {STAGE1_OPS.map(op => (
+                      <button
+                        key={op.value}
+                        type="button"
+                        onClick={() => handleStage1Change(op.value)}
+                        className={`flex-1 h-9 rounded-[10px] text-[13px] font-medium transition-colors ${
+                          stage1 === op.value
+                            ? 'bg-[#999999] text-white'
+                            : 'bg-white border border-[#ddd] text-[#333] hover:bg-[#f5f5f5]'
+                        }`}
+                      >
+                        {op.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stage 2 */}
+                <div className="flex flex-col gap-2">
+                  <label className="font-semibold text-[12px] text-[#666]">Stage 2</label>
                   <div className="flex flex-col gap-2">
-                    {[0, 1, 2].map(group => (
-                      <div key={group} className="flex gap-2">
-                        {OPERATION_BUTTONS.filter(b => b.group === group).map(btn => (
+                    {STAGE2_OPS.reduce<Stage2Meta[][]>((rows, op, i) => {
+                      if (i % 3 === 0) rows.push([op]);
+                      else rows[rows.length - 1].push(op);
+                      return rows;
+                    }, []).map((row, ri) => (
+                      <div key={ri} className="flex gap-2">
+                        {row.map(op => (
                           <button
-                            key={btn.value}
+                            key={op.value}
                             type="button"
-                            onClick={() => handleOperationChange(btn.value)}
+                            onClick={() => handleStage2Change(op.value)}
                             className={`flex-1 h-9 rounded-[10px] text-[13px] font-medium transition-colors ${
-                              opSettings.operation === btn.value
+                              stage2Op === op.value
                                 ? 'bg-[#999999] text-white'
-                                : 'bg-white text-[#333] border border-[#ddd] hover:bg-[#f5f5f5]'
+                                : 'bg-white border border-[#ddd] text-[#333] hover:bg-[#f5f5f5]'
                             }`}
                           >
-                            {btn.label}
+                            {op.label}
                           </button>
                         ))}
                       </div>
@@ -417,42 +537,48 @@ export default function KeyColorEditPopup({
                 </div>
 
                 {/* Param slider */}
-                {currentOpBtn?.hasParam && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <label className="font-semibold text-[12px] text-[#666]">{currentOpBtn.label}</label>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min={0}
-                          max={currentOpBtn.max}
-                          value={opSettings.param}
-                          onChange={e => handleParamChange(Number(e.target.value))}
-                          className="w-12 text-[12px] font-medium text-[#808088] text-right border border-[#e8e8e8] rounded-[6px] px-1.5 py-0.5 outline-none"
-                        />
-                        <span className="text-[12px] text-[#aaa]">
-                          {opSettings.operation === 'colorShift' ? '°' : '%'}
-                        </span>
+                {(() => {
+                  const currentStage2 = STAGE2_OPS.find(o => o.value === stage2Op);
+                  const max = stage2Op === 'colorShift' ? 360 : 100;
+                  return (
+                    <div className={`flex flex-col gap-2 ${currentStage2?.hasParam ? '' : 'invisible'}`}>
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-[12px] text-[#666]">
+                          {currentStage2?.paramLabel || 'Param'}
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            max={max}
+                            value={stage2Param}
+                            onChange={e => handleStage2ParamChange(Number(e.target.value))}
+                            className="w-12 text-[12px] font-medium text-[#808088] text-right border border-[#e8e8e8] rounded-[6px] px-1.5 py-0.5 outline-none"
+                          />
+                          <span className="text-[12px] text-[#aaa]">
+                            {stage2Op === 'colorShift' ? '°' : '%'}
+                          </span>
+                        </div>
                       </div>
+                      <input
+                        ref={sliderRef}
+                        type="range"
+                        min={0}
+                        max={max}
+                        value={stage2Param}
+                        onChange={e => handleStage2ParamChange(Number(e.target.value))}
+                        className="param-slider w-full cursor-pointer appearance-none h-[4px] rounded-full"
+                      />
                     </div>
-                    <input
-                      ref={sliderRef}
-                      type="range"
-                      min={0}
-                      max={currentOpBtn.max}
-                      value={opSettings.param}
-                      onChange={e => handleParamChange(Number(e.target.value))}
-                      className="param-slider w-full cursor-pointer appearance-none h-[4px] rounded-full"
-                    />
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Formula preview */}
                 <div className="flex flex-col gap-2">
                   <label className="font-semibold text-[12px] text-[#666]">Formula</label>
                   <div className="h-9 bg-[#f5f5f5] border border-[#dddddd] rounded-[10px] px-3 flex items-center">
                     <span className="text-[12px] font-medium text-[#999] font-mono">
-                      {buildFormulaString(label, opSettings, sourceLabel)}
+                      {buildFormulaString(label, { kind: 'operation', sourceKey, stage1, operation: stage2Op as any, param: stage2Param }, sourceLabel)}
                     </span>
                   </div>
                 </div>
@@ -462,9 +588,29 @@ export default function KeyColorEditPopup({
             {(isPrimary || isNeutral) && rangeSettings && (
               <div className="flex flex-col gap-3">
                 <label className="font-semibold text-[12px] text-[#666]">Range</label>
-                <RangeRow label="H" floor={0} ceil={360} value={rangeSettings.rule.h} onChange={v => handleRangeChange('h', v)} />
-                <RangeRow label="S" floor={0} ceil={100} value={rangeSettings.rule.s} onChange={v => handleRangeChange('s', v)} />
-                <RangeRow label="L" floor={0} ceil={100} value={rangeSettings.rule.l} onChange={v => handleRangeChange('l', v)} />
+                {/* when OKLCH mode is active we reinterpret the channels: use rule.l (L),
+                    rule.s becomes chroma (C) percentage, and rule.h stays hue.  We also
+                    reorder the rows to L‑C‑H for a logical LCH presentation. */}
+                {(
+                  useOklch ? ['l', 's', 'h'] : ['h', 's', 'l']
+                ).map(channel => {
+                  const labelMap: Record<string, string> = useOklch
+                    ? { l: 'L', s: 'C', h: 'H' }
+                    : { h: 'H', s: 'S', l: 'L' };
+                  const floorMap: Record<string, number> = { h: 0, s: 0, l: 0 };
+                  const ceilMap: Record<string, number> = { h: 360, s: 100, l: 100 };
+                  const value = (rangeSettings.rule as any)[channel];
+                  return (
+                    <RangeRow
+                      key={channel}
+                      label={labelMap[channel]}
+                      floor={floorMap[channel]}
+                      ceil={ceilMap[channel]}
+                      value={value}
+                      onChange={v => handleRangeChange(channel as 'h' | 's' | 'l', v)}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>

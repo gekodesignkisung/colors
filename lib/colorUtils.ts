@@ -133,12 +133,31 @@ export function generateRandomColor(): string {
   return oklchToHex(l, c, h);
 }
 
-// Generate a random color within specified HSL ranges
-export function generateRandomColorInRange(rule: { h: { min: number; max: number }; s: { min: number; max: number }; l: { min: number; max: number } }): string {
+// Generate a random color within specified ranges.  When `useOklch` is true
+// the `rule.s` field is interpreted as a percentage of maximum chroma, and the
+// returned color is generated in OKLCH space (L normalized to 0–1, C in a
+// reasonable cap, hue as usual).  This keeps the existing data structure
+// unchanged but shifts semantics when OKLCH mode is active.
+export function generateRandomColorInRange(
+  rule: { h: { min: number; max: number }; s: { min: number; max: number }; l: { min: number; max: number } },
+  useOklch: boolean = false
+): string {
   const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
   const h = rand(Math.max(0, rule.h.min), Math.min(360, rule.h.max));
-  const s = rand(Math.max(0, rule.s.min), Math.min(100, rule.s.max));
   const l = rand(Math.max(0, rule.l.min), Math.min(100, rule.l.max));
+
+  if (useOklch) {
+    // treat rule.s as C‑percentage; map to [0,0.25] chroma range for decent
+    // saturated colors.  (0.25 chosen to roughly mirror earlier random range
+    // of 0.08–0.22.)
+    const pct = rand(Math.max(0, rule.s.min), Math.min(100, rule.s.max)) / 100;
+    const c = pct * 0.25;
+    // l is 0–100; convert to 0–1
+    return oklchToHex(l / 100, c, h);
+  }
+
+  const s = rand(Math.max(0, rule.s.min), Math.min(100, rule.s.max));
   return hslToHex(h, s, l);
 }
 

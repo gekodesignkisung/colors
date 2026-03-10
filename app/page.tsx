@@ -10,19 +10,28 @@ import { useColorStore } from '@/store/colorStore';
 
 export default function Home() {
   const selectedTokenId = useColorStore(s => s.selectedTokenId);
+  const setProjectName = useColorStore(s => s.setProjectName);
+  const projectName = useColorStore(s => s.projectName);
 
-  // onboarding steps: 0 = just key colors, 1 = show naming panel, 2 = show token+preview, 3 = done
-  // initialize client-side only to avoid SSR errors
-  const [introStep, setIntroStep] = useState<number>(0);
+  // local project name input used during onboarding step -1
+  const [localName, setLocalName] = useState(projectName);
+  useEffect(() => { setLocalName(projectName); }, [projectName]);
 
-  // on mount, reset view step to 0 but keep stored data intact
+  // onboarding steps:
+  // -2 = start/login page
+  // -1 = project name entry
+  //  0 = key colors
+  //  1 = naming
+  //  2 = token list + preview (main workspace)
+  const [introStep, setIntroStep] = useState<number>(-2);
+
+  // on mount initialise step (could read from storage if desired)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setIntroStep(0);
+      setIntroStep(-2);
     }
   }, []);
 
-  // optionally persist step during session (not needed for refresh reset)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('introStep', introStep.toString());
@@ -33,6 +42,55 @@ export default function Home() {
   const showTokenList = introStep >= 2;
   const showPreview = introStep >= 2; // preview appears together with tokens
 
+  // render onboarding screens before workspace
+  if (introStep === -2) {
+    // enhanced start screen based on Figma example
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#4A90E2] to-[#50E3C2]">
+        <div className="bg-white rounded-[30px] shadow-2xl flex flex-col items-center px-16 py-20 max-w-xl w-full">
+          <img src="/logo-opencolor.svg" alt="OpenColor" width={220} height={80} />
+          <h2 className="mt-8 text-3xl font-extrabold text-gray-800">Welcome to OpenColor</h2>
+          <p className="mt-4 text-lg text-gray-600 text-center max-w-sm">
+            A simple, perceptually‑accurate color system builder for your design
+            projects. Get started by logging in.
+          </p>
+          <button
+            className="mt-12 w-full max-w-xs text-center px-8 py-3 bg-[#4A90E2] text-white rounded-full font-semibold hover:bg-[#356fb9] transition-colors"
+            onClick={() => setIntroStep(-1)}
+          >
+            Log in with Google
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (introStep === -1) {
+    // project name entry
+    const canNext = localName.trim().length > 0;
+    return (
+      <div className="flex h-screen items-center justify-center bg-white flex-col px-4">
+        <h1 className="text-2xl font-semibold mb-4">Enter project name</h1>
+        <input
+          value={localName}
+          onChange={e => setLocalName(e.target.value)}
+          className="border border-gray-300 rounded px-3 py-2 w-full max-w-sm"
+        />
+        <button
+          className={`mt-6 px-6 py-3 rounded-full font-medium ${canNext ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}
+          disabled={!canNext}
+          onClick={() => {
+            setProjectName(localName.trim());
+            setIntroStep(0);
+          }}
+        >
+          Next
+        </button>
+      </div>
+    );
+  }
+
+  // normal workspace layout for steps 0 and above
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#dddddf', gap: 1 }}>
       {/* Left panel — Key Colors (300px) */}

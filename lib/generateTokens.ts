@@ -522,17 +522,31 @@ export function tokensToJSON(tokens: DesignToken[]): Record<string, string> {
 }
 
 export function buildFormulaString(keyLabel: string, settings: OpGenSettings, sourceLabel: string): string {
-  const { operation, param } = settings;
+  const { stage1 = 'source', operation, param } = settings;
   const unit = operation === 'colorShift' ? '°' : '%';
-  switch (operation) {
-    case 'source':        return `f  ${keyLabel} = ${sourceLabel}`;
-    case 'contrast':      return `f  contrast(${sourceLabel})`;
-    case 'invert':        return `f  invertLightness(${sourceLabel})`;
-    case 'lighten':       return `f  lighten(${sourceLabel}, ${param}${unit})`;
-    case 'darken':        return `f  darken(${sourceLabel}, ${param}${unit})`;
-    case 'setSaturation': return `f  setSaturation(${sourceLabel}, ${param}${unit})`;
-    case 'setLightness':  return `f  setLightness(${sourceLabel}, ${param}${unit})`;
-    case 'colorShift':    return `f  colorShift(${sourceLabel}, ${param}${unit})`;
-    default:              return `f  ${keyLabel}`;
+
+  // stage1 prefix
+  let stage1Part = '';
+  if (stage1 === 'grayscale') stage1Part = 'grayscale('; 
+  else if (stage1 === 'invert') stage1Part = 'invertLightness('; 
+  // note: 'source' does nothing
+
+  const baseExpr = (() => {
+    switch (operation) {
+      case 'source':        return `${sourceLabel}`;
+      case 'contrast':      return `contrast(${sourceLabel})`;
+      case 'invert':        return `invertLightness(${sourceLabel})`;
+      case 'lighten':       return `lighten(${sourceLabel}, ${param}${unit})`;
+      case 'darken':        return `darken(${sourceLabel}, ${param}${unit})`;
+      case 'setSaturation': return `setSaturation(${sourceLabel}, ${param}${unit})`;
+      case 'setLightness':  return `setLightness(${sourceLabel}, ${param}${unit})`;
+      case 'colorShift':    return `colorShift(${sourceLabel}, ${param}${unit})`;
+      default:              return `${keyLabel}`;
+    }
+  })();
+
+  if (stage1Part) {
+    return `f  ${stage1Part}${baseExpr})`;
   }
+  return `f  ${baseExpr}`;
 }

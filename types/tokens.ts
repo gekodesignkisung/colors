@@ -64,6 +64,8 @@ export type KeyColorMode = 'auto' | 'manual';
 export interface OpGenSettings {
   kind: 'operation';
   sourceKey: string;
+  /** optional first-stage transformation (defaults to 'source') */
+  stage1?: 'source' | 'grayscale' | 'invert';
   operation: TokenOperation;
   param: number;
 }

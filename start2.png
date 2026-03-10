@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>AccessDenied</Code><Message>Query-string authentication requires the Signature, Expires and AWSAccessKeyId parameters</Message><RequestId>AZ977JCV9XAFH5S3</RequestId><HostId>VUz8x9khoo9tH4DPCn5l6Ktxa2+52glbue6UzXVmrT2uPJQC3257uITNwJ8PKeHPd9DChTbnu1g=</HostId></Error>
