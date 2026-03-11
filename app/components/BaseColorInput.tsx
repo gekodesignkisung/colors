@@ -233,33 +233,35 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
                 <div
                   key={key}
                   title="컬러 설정 수정하기"
-                  className={`flex items-center min-h-[64px] w-full px-5 py-2 transition-colors border-b border-[#f0f0f0] ${enabled ? '' : 'opacity-50 cursor-not-allowed'}`}
+                  className="flex items-center min-h-[64px] w-full px-5 py-2 transition-colors border-b border-[#f0f0f0]"
                 >
-                  {/* Swatch — 클릭 시 바로 ColorPicker */}
-                  <button
-                    type="button"
-                    disabled={!enabled}
-                    onClick={e => { setPickerKey(key); setPickerPos({ x: e.clientX, y: e.clientY }); }}
-                    className={`shrink-0 transition-transform ${enabled ? 'hover:scale-110' : ''}`}
-                    title="클릭하여 색상 선택"
-                  >
-                    <ColorShape color={raw} size={48} />
-                  </button>
-                  {/* Label + value — 클릭 시 KeyColorEditPopup */}
-                  <button
-                    type="button"
-                    disabled={!enabled}
-                    onClick={e => {
-                      setSelectedKey(key);
-                      setEditPopupPos({ x: e.clientX, y: e.clientY });
-                    }}
-                    className="pl-4 flex flex-col gap-0.5 flex-1 text-left min-w-0"
-                  >
-                    <span className="font-semibold text-sm text-[#333333] leading-tight">{label}</span>
-                    <span className="text-[11px] font-medium text-[#999999] font-mono">
-                      {valueDisplay}
-                    </span>
-                  </button>
+                  <div className={`flex items-center flex-1 transition-opacity ${enabled ? '' : 'opacity-50'}`}>
+                    {/* Swatch — 클릭 시 바로 ColorPicker */}
+                    <button
+                      type="button"
+                      disabled={!enabled}
+                      onClick={e => { setPickerKey(key); setPickerPos({ x: e.clientX, y: e.clientY }); }}
+                      className={`shrink-0 transition-transform ${enabled ? 'hover:scale-110' : ''}`}
+                      title="클릭하여 색상 선택"
+                    >
+                      <ColorShape color={raw} size={48} />
+                    </button>
+                    {/* Label + value — 클릭 시 KeyColorEditPopup */}
+                    <button
+                      type="button"
+                      disabled={!enabled}
+                      onClick={e => {
+                        setSelectedKey(key);
+                        setEditPopupPos({ x: e.clientX, y: e.clientY });
+                      }}
+                      className="pl-4 flex flex-col gap-0.5 flex-1 text-left min-w-0"
+                    >
+                      <span className="font-semibold text-sm text-[#333333] leading-tight">{label}</span>
+                      <span className="text-[11px] font-medium text-[#999999] font-mono">
+                        {valueDisplay}
+                      </span>
+                    </button>
+                  </div>
                   {/* optional enable/disable switch for secondary/tertiary */}
                   {(key === 'secondary' || key === 'tertiary') && (
                     <button
@@ -269,10 +271,10 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={enabled ? '/icon-switch-on.svg' : '/icon-switch-off.svg'}
+                        src={enabled ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
                         alt=""
-                        width={40}
-                        height={24}
+                        width={20}
+                        height={32}
                         aria-hidden="true"
                       />
                     </button>
@@ -338,13 +340,7 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
 
       {/* Auto mode toggle (replaces header dropdown) */}
       <div className="shrink-0 px-5 py-3 border-t border-[#ebebeb] bg-white">
-        <button
-          type="button"
-          title={globalGenerationMode === 'auto' ? 'Auto mode on' : 'Auto mode off'}
-          aria-label="Key color generation mode"
-          onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
-          className="flex items-center justify-between w-full group"
-        >
+        <div className="flex items-center justify-between w-full group">
           <div className="text-left">
             <p className={`text-xs font-semibold leading-tight transition-colors ${globalGenerationMode === 'auto' ? 'text-[#707077]' : 'text-[#333]'}`}
             >
@@ -353,19 +349,21 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
             <p className="text-[11px] text-[#aaa] mt-0.5 leading-tight">Key color generation</p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={globalGenerationMode === 'auto' ? '/icon-switch-on.svg' : '/icon-switch-off.svg'} alt="" width={40} height={24} aria-hidden="true" />
-        </button>
+          <button
+            type="button"
+            title={globalGenerationMode === 'auto' ? 'Auto mode on' : 'Auto mode off'}
+            aria-label="Key color generation mode"
+            onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
+            className="p-0 bg-transparent border-0 cursor-pointer flex items-center justify-center"
+          >
+            <img src={globalGenerationMode === 'auto' ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'} alt="" width={20} height={32} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {/* OKLCH toggle */}
       <div className="shrink-0 px-5 py-3 border-t border-[#ebebeb] bg-white">
-        <button
-          type="button"
-          title={useOklch ? 'OKLCH mode on' : 'OKLCH mode off'}
-          aria-label="Generate colors by OKLCH"
-          onClick={toggleOklch}
-          className="flex items-center justify-between w-full group"
-        >
+        <div className="flex items-center justify-between w-full group">
           <div className="text-left">
             <p className={`text-xs font-semibold leading-tight transition-colors ${useOklch ? 'text-[#707077]' : 'text-[#333]'}`}>
               Generate with OKLCH
@@ -373,8 +371,16 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
             <p className="text-[11px] text-[#aaa] mt-0.5 leading-tight">Perceptually uniform color space</p>
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={useOklch ? '/icon-switch-on.svg' : '/icon-switch-off.svg'} alt="" width={40} height={24} aria-hidden="true" />
-        </button>
+          <button
+            type="button"
+            title={useOklch ? 'OKLCH mode on' : 'OKLCH mode off'}
+            aria-label="Generate colors by OKLCH"
+            onClick={toggleOklch}
+            className="p-0 bg-transparent border-0 cursor-pointer flex items-center justify-center"
+          >
+            <img src={useOklch ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'} alt="" width={20} height={32} aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
       {/* Direct color picker (swatch click) */}

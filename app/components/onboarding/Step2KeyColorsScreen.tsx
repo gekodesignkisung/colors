@@ -1,4 +1,4 @@
-import BaseColorInput from '../sidebar/BaseColorInput';
+import BaseColorInput from '../BaseColorInput';
 
 type Props = {
   onPrev: () => void;
@@ -7,7 +7,7 @@ type Props = {
 
 export default function Step2KeyColorsScreen({ onPrev, onNext }: Props) {
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-white items-center pt-[80px]">
+    <div className="flex w-full flex-col overflow-hidden bg-white items-center pt-[80px]">
       <div className="flex flex-col w-[1080px] max-w-full">
         <div className="flex w-full items-center justify-between pb-2">
           <h1

@@ -34,21 +34,26 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
   const namingOrder     = useColorStore(s => s.namingOrder);
   const namingEnabled   = useColorStore(s => s.namingEnabled);
   const namingValues    = useColorStore(s => s.namingValues);
+  const namingDescriptions = useColorStore(s => s.namingDescriptions);
 
   const defaultNamingNamespace = useColorStore(s => s.defaultNamingNamespace);
   const defaultNamingValues    = useColorStore(s => s.defaultNamingValues);
+  const defaultNamingDescriptions = useColorStore(s => s.defaultNamingDescriptions);
 
   const setNamingNamespace = useColorStore(s => s.setNamingNamespace);
   const setNamingOrder     = useColorStore(s => s.setNamingOrder);
   const setNamingEnabled   = useColorStore(s => s.setNamingEnabled);
   const setNamingValue     = useColorStore(s => s.setNamingValue);
+  const setNamingDescription = useColorStore(s => s.setNamingDescription);
 
   const setDefaultNamingNamespace = useColorStore(s => s.setDefaultNamingNamespace);
   const setDefaultNamingValues    = useColorStore(s => s.setDefaultNamingValues);
+  const setDefaultNamingDescriptions = useColorStore(s => s.setDefaultNamingDescriptions);
 
   // ── Local UI state ──
   const [expandedKey, setExpandedKey] = useState<SectionKey | null>(null);
   const [localEdit,   setLocalEdit]   = useState<Record<string, string | string[]>>({});
+  const [localDesc,   setLocalDesc]   = useState<Record<string, string>>({});
   const [inputVal,    setInputVal]    = useState('');
   const [showToast,   setShowToast]   = useState(false);
 
@@ -72,7 +77,11 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
     }
     const current = (localEdit[key] as string[]) ?? namingValues[key] ?? [];
     const def     = defaultNamingValues[key] ?? [];
-    return JSON.stringify(current) !== JSON.stringify(def);
+    if (JSON.stringify(current) !== JSON.stringify(def)) return true;
+    // description
+    const curDesc = localDesc[key] ?? namingDescriptions[key] ?? '';
+    const defDesc = defaultNamingDescriptions[key] ?? '';
+    return curDesc !== defDesc;
   };
 
   const isDirty = (key: SectionKey): boolean => {
@@ -80,7 +89,11 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
     if (key === 'namespace') return (localEdit.namespace as string) !== namingNamespace;
     const saved   = namingValues[key] ?? [];
     const edited  = (localEdit[key] as string[]) ?? [];
-    return JSON.stringify(edited) !== JSON.stringify(saved);
+    if (JSON.stringify(edited) !== JSON.stringify(saved)) return true;
+    // also check description dirty
+    const descSaved = namingDescriptions[key] ?? '';
+    const descEdited = localDesc[key] ?? descSaved;
+    return descEdited !== descSaved;
   };
 
   const openSection = (key: SectionKey) => {
@@ -91,6 +104,8 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
     setExpandedKey(key);
     const currentVal = key === 'namespace' ? namingNamespace : [...(namingValues[key] ?? [])];
     setLocalEdit(prev => ({ ...prev, [key]: currentVal }));
+    // copy description
+    setLocalDesc(prev => ({ ...prev, [key]: namingDescriptions[key] ?? '' }));
     setInputVal('');
   };
 
@@ -107,6 +122,11 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
     } else {
       setNamingValue(key, (localEdit[key] as string[]) ?? namingValues[key] ?? []);
     }
+    // update description if changed
+    const newDesc = localDesc[key];
+    if (newDesc !== undefined && newDesc !== namingDescriptions[key]) {
+      setNamingDescription(key, newDesc);
+    }
     setExpandedKey(null);
   };
 
@@ -119,6 +139,8 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
     } else {
       setLocalEdit(prev => ({ ...prev, [key]: [...(defaults.defaultNamingValues[key] ?? [])] }));
     }
+    // reset description as well
+    setLocalDesc(prev => ({ ...prev, [key]: defaults.defaultNamingDescriptions[key] ?? '' }));
   };
 
   const addTag = (key: SectionKey) => {
@@ -191,12 +213,13 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
                 <button
                   type="button"
                   onClick={() => openSection(sec.key)}
-                  className={`flex flex-1 transition-colors
-                    ${isExpanded && isDirty(sec.key) ? 'cursor-default' : 'hover:bg-[#fafafa]'}`}
+                  title={!isExpanded ? "내용 수정하기" : undefined}
+                  className={`flex flex-1 transition-opacity transition-colors
+                    ${isOn ? '' : 'opacity-50 cursor-not-allowed'} ${isExpanded && isDirty(sec.key) ? 'cursor-default' : ''}`}
                 >
                   <div className="flex flex-1 flex-col gap-0.5 justify-center min-w-0">
                     <span className="font-semibold text-sm text-[#333] text-left">{sec.label}</span>
-                    <span className="text-[12px] font-medium text-[#999] text-left">{sec.desc}</span>
+                    <span className="text-[12px] font-medium text-[#999] text-left">{namingDescriptions[sec.key] || sec.desc}</span>
                   </div>
                 </button>
 
@@ -235,19 +258,48 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
                 {/* Toggle switch */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={isOn ? '/icon-switch-on.svg' : '/icon-switch-off.svg'}
+                  src={isOn ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
                   alt=""
-                  width={40}
-                  height={24}
+                  width={20}
+                  height={32}
                   aria-hidden="true"
                   onClick={e => toggleEnabled(sec.key, e)}
                   className="shrink-0 cursor-pointer"
                 />
               </div>
 
+              {/* show existing tags/values when collapsed */}
+              {isOn && !isExpanded && (
+                <>
+                  {sec.isSingle && namingNamespace && (
+                    <div className="px-[15px] pb-[15px]">
+                      <div className="flex flex-wrap gap-[6px]">
+                        <span className="inline-flex items-center h-[26px] pl-[8px] pr-[8px] rounded-[5px] bg-white border border-[#aaa] text-[#333] text-[12px] font-medium whitespace-nowrap">
+                          {namingNamespace}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {!sec.isSingle && (namingValues[sec.key] ?? []).length > 0 && (
+                    <div className="px-[15px] pb-[15px]">
+                      <div className="flex flex-wrap gap-[6px]">
+                        {(namingValues[sec.key] ?? []).map(tag => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center h-[26px] pl-[8px] pr-[8px] rounded-[5px] bg-white border border-[#aaa] text-[#333] text-[12px] font-medium whitespace-nowrap"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* Expanded content */}
-              {isExpanded && (
-                <div className="flex flex-col gap-[20px] px-[20px] pt-[20px] pb-[20px]">
+              {isExpanded && isOn && (
+                <div className="flex flex-col gap-[20px] px-[15px] pt-0 pb-[15px]">
                   {sec.isSingle ? (
                     <input
                       type="text"
@@ -266,7 +318,7 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
                         {editList.map(tag => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-[4px] h-[26px] pl-[8px] pr-[4px] rounded-[50px] bg-[#606070] text-white text-[12px] font-semibold shrink-0"
+                            className="inline-flex items-center gap-[4px] h-[26px] pl-[8px] pr-[4px] rounded-[5px] bg-white border border-[#aaa] text-[#333] text-[12px] font-medium shrink-0"
                           >
                             {tag}
                             <button
@@ -276,7 +328,7 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
                               aria-label={`${tag} 제거`}
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src="/icon-del.svg" alt="" width={16} height={16} aria-hidden="true" />
+                              <img src="/icon-del.svg" alt="" width={18} height={18} aria-hidden="true" />
                             </button>
                           </span>
                         ))}
@@ -305,6 +357,18 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
                           <img src="/icon-add-item.svg" alt="" width={30} height={30} aria-hidden="true" />
                         </button>
                       </div>
+
+                      {/* Description input */}
+                      <div className="flex flex-col">
+                        <label className="text-[12px] font-medium text-[#333] mb-1">설명</label>
+                        <input
+                          type="text"
+                          value={localDesc[sec.key] ?? namingDescriptions[sec.key] ?? ''}
+                          onChange={e => setLocalDesc(prev => ({ ...prev, [sec.key]: e.target.value }))}
+                          placeholder="어떤 의미인지 설명"
+                          className="h-[30px] border border-[#ccc] rounded-[8px] px-3 text-[12px] text-[#333] outline-none focus:border-[#808088] placeholder-[#ccc]"
+                        />
+                      </div>
                     </>
                   )}
 
@@ -318,27 +382,30 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
                       >
                         Reset
                       </button>
-                      {isChangedFromDefault(sec.key) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (sec.key === 'namespace') {
-                              const val = (localEdit.namespace as string) ?? namingNamespace;
-                              setNamingNamespace(val);
-                              setDefaultNamingNamespace(val);
-                            } else {
-                              const list = ((localEdit[sec.key] as string[]) ?? namingValues[sec.key] ?? []);
-                              setNamingValue(sec.key, list as string[]);
-                              setDefaultNamingValues(sec.key, list as string[]);
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (sec.key === 'namespace') {
+                            const val = (localEdit.namespace as string) ?? namingNamespace;
+                            setNamingNamespace(val);
+                            setDefaultNamingNamespace(val);
+                          } else {
+                            const list = ((localEdit[sec.key] as string[]) ?? namingValues[sec.key] ?? []);
+                            setNamingValue(sec.key, list as string[]);
+                            setDefaultNamingValues(sec.key, list as string[]);
+                            const newDesc = localDesc[sec.key];
+                            if (newDesc !== undefined) {
+                              setNamingDescription(sec.key, newDesc);
+                              setDefaultNamingDescriptions(sec.key, newDesc);
                             }
-                            setExpandedKey(null);
-                            setShowToast(true);
-                          }}
-                          className="h-[30px] px-3 bg-[#eef5ff] rounded-[8px] text-[12.5px] font-medium text-[#4a70e2] hover:bg-[#ddeaff] transition-colors"
-                        >
-                          Set default
-                        </button>
-                      )}
+                          }
+                          setExpandedKey(null);
+                          setShowToast(true);
+                        }}
+                        className="h-[30px] px-3 bg-[#eef5ff] rounded-[8px] text-[12.5px] font-medium text-[#4a70e2] hover:bg-[#ddeaff] transition-colors"
+                      >
+                        Set default
+                      </button>
                     </div>
                     <div className="flex gap-[8px]">
                       <button

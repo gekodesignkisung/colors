@@ -185,7 +185,7 @@ export default function Step3GenerateTokensScreen({
   };
 
   return (
-    <div className="flex h-screen w-full flex-col bg-white overflow-hidden items-center pt-[80px]">
+    <div className="flex w-full flex-col bg-white overflow-hidden items-center pt-[80px]">
       <div className="flex flex-col w-[1080px] max-w-full h-full">
         <div className="flex w-full items-center justify-between pb-2">
           <h1
@@ -232,8 +232,8 @@ export default function Step3GenerateTokensScreen({
                     <img
                       src={enabled.includes('namespace') ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
                       alt=""
-                      width={34}
-                      height={20}
+                      width={24}
+                      height={40}
                       aria-hidden="true"
                       onClick={() => toggleEnabled('namespace')}
                       className="shrink-0 cursor-pointer mt-1"
@@ -258,8 +258,8 @@ export default function Step3GenerateTokensScreen({
                     <img
                       src={enabled.includes('theme') ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
                       alt=""
-                      width={34}
-                      height={20}
+                      width={24}
+                      height={40}
                       aria-hidden="true"
                       onClick={() => toggleEnabled('theme')}
                       className="shrink-0 cursor-pointer mt-1"
@@ -382,8 +382,8 @@ export default function Step3GenerateTokensScreen({
                       <img
                         src={enabled.includes(key) ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
                         alt=""
-                        width={34}
-                        height={20}
+                        width={24}
+                        height={40}
                         aria-hidden="true"
                         onClick={() => toggleEnabled(key)}
                         className="shrink-0 cursor-pointer mt-1"

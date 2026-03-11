@@ -29,6 +29,17 @@ export const DEFAULT_NAMING_VALUES: Record<string, string[]> = {
   component: ['button', 'input', 'card', 'nav'],
 };
 
+// names/labels for sections; used when user edits section description
+export const DEFAULT_NAMING_DESCRIPTIONS: Record<string, string> = {
+  namespace: '전체 토큰을 구분하는 최상위 식별자',
+  theme:     'CSS scope로 처리 (토큰명에 포함 안 됨)',
+  category:  '토큰의 속성 유형 (color, typography..)',
+  variant:   '색상 역할',
+  type:      '컬러 적용 대상',
+  state:     'UI 인터랙션 상태',
+  component: '2단계 alias 레이어에 적용',
+};
+
 function makeNamingConfig(state: {
   namingNamespace: string;
   namingOrder: string[];
@@ -119,15 +130,19 @@ interface ColorStore {
   setGroupEnabled: (key: string, enabled: boolean) => void;
   setDefaultNamingNamespace: (ns: string) => void;
   setDefaultNamingValues: (key: string, values: string[]) => void;
+  setNamingDescription: (key: string, desc: string) => void;
+  setDefaultNamingDescriptions: (key: string, desc: string) => void;
 
   // Naming config
   namingNamespace: string;
   namingOrder: string[];
   namingEnabled: string[];
   namingValues: Record<string, string[]>;
+  namingDescriptions: Record<string, string>;
   // user-adjustable default naming rules (persisted separately)
   defaultNamingNamespace: string;
   defaultNamingValues: Record<string, string[]>;
+  defaultNamingDescriptions: Record<string, string>;
 
   // Preview element token assignments
   previewAssignments: Record<string, string>;
@@ -187,6 +202,8 @@ export interface ProjectData {
   namingOrder: string[];
   namingEnabled: string[];
   namingValues: Record<string, string[]>;
+  namingDescriptions: Record<string, string>;
+  defaultNamingDescriptions?: Record<string, string>;
   useOklch: boolean;
   isDark: boolean;
   generateRules: Record<string, GenerateRule>;
@@ -260,10 +277,12 @@ export const useColorStore = create<ColorStore>()(
   namingOrder:     DEFAULT_NAMING_ORDER,
   namingEnabled:   DEFAULT_NAMING_ENABLED,
   namingValues:    { ...DEFAULT_NAMING_VALUES },
+  namingDescriptions: { ...DEFAULT_NAMING_DESCRIPTIONS },
 
   // user-adjustable defaults for naming rules (persisted separately from current settings)
   defaultNamingNamespace: DEFAULT_NAMING_NAMESPACE,
   defaultNamingValues:    { ...DEFAULT_NAMING_VALUES },
+  defaultNamingDescriptions: { ...DEFAULT_NAMING_DESCRIPTIONS },
 
   // whether each key color card is active/visible. secondary/tertiary toggles will
   // update these flags; disabled colors are ignored for randomization.
@@ -567,6 +586,8 @@ export const useColorStore = create<ColorStore>()(
       namingOrder: s.namingOrder,
       namingEnabled: s.namingEnabled,
       namingValues: s.namingValues,
+      namingDescriptions: s.namingDescriptions,
+      defaultNamingDescriptions: s.defaultNamingDescriptions,
       useOklch: s.useOklch,
       isDark: s.isDark,
       generateRules: s.generateRules,
@@ -641,7 +662,9 @@ export const useColorStore = create<ColorStore>()(
       namingNamespace: data.namingNamespace,
       namingOrder: data.namingOrder,
       namingEnabled: data.namingEnabled,
-      namingValues: data.namingValues,
+          namingValues: data.namingValues,
+      namingDescriptions: data.namingDescriptions ?? DEFAULT_NAMING_DESCRIPTIONS,
+      defaultNamingDescriptions: data.defaultNamingDescriptions ?? DEFAULT_NAMING_DESCRIPTIONS,
       useOklch: data.useOklch ?? true,
       isDark: data.isDark ?? false,
       generateRules: data.generateRules ?? {},
@@ -688,6 +711,12 @@ export const useColorStore = create<ColorStore>()(
     const nc = { ...makeNamingConfig(get()), values: namingValues };
     const tokens = generateTokensFromNaming(get().baseColors, nc, get().isDark, get().useOklch);
     set({ namingValues, tokens: mergeCustomTokens(tokens, get().customTokens) });
+  },
+  setNamingDescription: (key, desc) => {
+    set(state => ({ namingDescriptions: { ...state.namingDescriptions, [key]: desc } }));
+  },
+  setDefaultNamingDescriptions: (key, desc) => {
+    set(state => ({ defaultNamingDescriptions: { ...state.defaultNamingDescriptions, [key]: desc } }));
   },
 
   addCustomToken: (token) => {
