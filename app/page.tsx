@@ -6,6 +6,8 @@ import NamingPanel from './components/NamingPanel';
 import TokenList from './components/sidebar/TokenList';
 import PreviewCanvas from './components/preview/PreviewCanvas';
 import TokenEditPopup from './components/TokenEditPopup';
+import Step2KeyColorsScreen from './components/onboarding/Step2KeyColorsScreen';
+import Step3GenerateTokensScreen from './components/onboarding/Step3GenerateTokensScreen';
 import { useColorStore } from '@/store/colorStore';
 
 export default function Home() {
@@ -14,14 +16,13 @@ export default function Home() {
   const projectName = useColorStore(s => s.projectName);
 
   // local project name input used during onboarding step -1
-  const [localName, setLocalName] = useState(projectName);
-  useEffect(() => { setLocalName(projectName); }, [projectName]);
+  const [localName, setLocalName] = useState('');
 
   // onboarding steps:
   // -2 = start/login page
   // -1 = project name entry
   //  0 = key colors
-  //  1 = naming
+  //  1 = generate tokens (Step 3)
   //  2 = token list + preview (main workspace)
   const [introStep, setIntroStep] = useState<number>(-2);
 
@@ -38,28 +39,42 @@ export default function Home() {
     }
   }, [introStep]);
 
-  const showNaming = introStep >= 1;
-  const showTokenList = introStep >= 2;
-  const showPreview = introStep >= 2; // preview appears together with tokens
+  const showNaming = true;
+  const showTokenList = true;
+  const showPreview = true;
 
   // render onboarding screens before workspace
   if (introStep === -2) {
-    // enhanced start screen based on Figma example
+    // Figma step: "home" (57:45)
+    // Dark background #404050, centered logo and subtext
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#4A90E2] to-[#50E3C2]">
-        <div className="bg-white rounded-[30px] shadow-2xl flex flex-col items-center px-16 py-20 max-w-xl w-full">
-          <img src="/logo-opencolor.svg" alt="OpenColor" width={220} height={80} />
-          <h2 className="mt-8 text-3xl font-extrabold text-gray-800">Welcome to OpenColor</h2>
-          <p className="mt-4 text-lg text-gray-600 text-center max-w-sm">
-            A simple, perceptually‑accurate color system builder for your design
-            projects. Get started by logging in.
-          </p>
-          <button
-            className="mt-12 w-full max-w-xs text-center px-8 py-3 bg-[#4A90E2] text-white rounded-full font-semibold hover:bg-[#356fb9] transition-colors"
-            onClick={() => setIntroStep(-1)}
-          >
-            Log in with Google
-          </button>
+      <div
+        className="flex h-screen w-full items-center justify-center cursor-pointer transition-colors"
+        style={{ backgroundColor: '#404050' }}
+        onClick={() => setIntroStep(-1)}
+      >
+        <div className="flex flex-col items-center justify-center p-[60px] gap-5">
+          {/* Logo area */}
+          <div className="flex flex-col items-center">
+            <img src="/logo-opencolor.svg" alt="OpenColor" style={{ width: 250, height: 'auto', filter: 'brightness(0) invert(1)' }} />
+          </div>
+
+          {/* Subtext */}
+          <div className="mt-8">
+            <p
+              className="text-white uppercase text-left"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                fontSize: 14,
+                letterSpacing: 0,
+                lineHeight: '16.94px',
+                opacity: 0.9
+              }}
+            >
+              AI based oklch color design system generation
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -69,78 +84,126 @@ export default function Home() {
     // project name entry
     const canNext = localName.trim().length > 0;
     return (
-      <div className="flex h-screen items-center justify-center bg-white flex-col px-4">
-        <h1 className="text-2xl font-semibold mb-4">Enter project name</h1>
-        <input
-          value={localName}
-          onChange={e => setLocalName(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 w-full max-w-sm"
-        />
-        <button
-          className={`mt-6 px-6 py-3 rounded-full font-medium ${canNext ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'}`}
-          disabled={!canNext}
-          onClick={() => {
-            setProjectName(localName.trim());
-            setIntroStep(0);
-          }}
-        >
-          Next
-        </button>
+      <div className="flex h-screen w-full flex-col bg-white overflow-hidden items-center" style={{ paddingTop: 80 }}>
+        {/* Main Content Container */}
+        <div className="flex flex-col w-[1080px] max-w-full">
+          
+          {/* Header Row */}
+          <div className="flex w-full items-center justify-between pb-2">
+            <h1 className="text-[#333]" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 24, lineHeight: '29.05px' }}>
+              Step 1 . Create Project
+            </h1>
+            <div className="flex items-center w-[120px] h-[50px]">
+              <img src="/logo-opencolor-s.svg" alt="OpenColor" style={{ width: '100%', height: 'auto' }} />
+            </div>
+          </div>
+
+          {/* Top Divider */}
+          <div className="w-full h-[2px] bg-[#404050]"></div>
+
+          {/* Subtitle */}
+          <div className="pt-3">
+            <p className="text-[#808090]" style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, lineHeight: '25.2px' }}>
+              Enter a name for your new design system project.
+            </p>
+          </div>
+
+          {/* Input Area (Centered vertically in its block) */}
+          <div className="flex w-full justify-center items-center h-[350px]">
+             <div className="flex items-center justify-between w-[400px] h-[50px] border border-[#808090] rounded-[50px] px-5 bg-white">
+                <input
+                  value={localName}
+                  onChange={e => setLocalName(e.target.value)}
+                  placeholder="Enter your project name"
+                  className="w-full h-full bg-transparent outline-none text-[#333] placeholder-[#ccc]"
+                  style={{ fontFamily: 'Inter, sans-serif', fontSize: 18 }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && canNext) {
+                      setProjectName(localName.trim());
+                      setIntroStep(0);
+                    }
+                  }}
+                />
+             </div>
+          </div>
+        </div>
+
+        {/* Bottom Nav Area */}
+        <div className="flex flex-col w-[1080px] max-w-full grow justify-end pb-[60px]">
+          <div className="flex items-center w-full h-[50px]">
+            {/* Prev Button */}
+            <button
+              className="flex items-center justify-center w-[120px] h-full rounded-[50px] border-[2px] border-[#404050] bg-white text-[#404050] transition-colors hover:bg-gray-50 cursor-pointer"
+              onClick={() => setIntroStep(-2)}
+            >
+              <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, lineHeight: '21.78px' }}>
+                Prev.
+              </span>
+            </button>
+            {/* The line taking remaining space */}
+            <div className="h-[2px] bg-[#404050] flex-1 mx-0"></div>
+            {/* Next Button */}
+            <button
+              className={`flex items-center justify-center w-[120px] h-full rounded-[50px] transition-colors ${canNext ? 'bg-[#404050] text-white cursor-pointer' : 'bg-[#808090] text-[#b4b4be] cursor-not-allowed'}`}
+              disabled={!canNext}
+              onClick={() => {
+                setProjectName(localName.trim());
+                setIntroStep(0);
+              }}
+            >
+              <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, lineHeight: '21.78px' }}>
+                Next
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // normal workspace layout for steps 0 and above
+  if (introStep === 0) {
+    return (
+      <Step2KeyColorsScreen
+        onPrev={() => setIntroStep(-1)}
+        onNext={() => setIntroStep(1)}
+      />
+    );
+  }
+
+  if (introStep === 1) {
+    return <Step3GenerateTokensScreen onPrev={() => setIntroStep(0)} onNext={() => setIntroStep(2)} />;
+  }
+
+  // normal workspace layout for final step
+  if (introStep < 2) return null;
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#dddddf', gap: 1 }}>
-      {/* Left panel — Key Colors (300px) */}
-      <aside style={{ width: 300, flexShrink: 0 }} className="flex flex-col bg-white">
-        <div className="flex-1 overflow-auto">
-          <BaseColorInput
-            introStep={introStep}
-            onNext={() => setIntroStep(1)}
-          />
+      {/* 4 Pillars in Main Workspace */}
+      <aside style={{ flexShrink: 0, width: 300 }} className="flex flex-col bg-white overflow-hidden opacity-100">
+        <div className="flex-1 overflow-auto opacity-100">
+          <BaseColorInput introStep={introStep} />
         </div>
       </aside>
 
-      {/* Naming panel (360px) */}
-      <aside
-        style={{ flexShrink: 0 }}
-        className={
-          `flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ` +
-          (showNaming
-            ? 'w-[360px] opacity-100'
-            : 'w-0 opacity-0')
-        }
-      >
-        <div className={`flex-1 overflow-auto transition-opacity duration-300 ${showNaming ? 'opacity-100' : 'opacity-0'}`}>
-          <NamingPanel showNext={introStep === 1} onNext={() => setIntroStep(2)} />
+      <aside style={{ flexShrink: 0, width: 360 }} className="flex flex-col bg-white overflow-hidden opacity-100">
+        <div className="flex-1 overflow-auto opacity-100">
+          <NamingPanel />
         </div>
       </aside>
-
       {/* Middle panel — Generated Colors (360px) */}
       <aside
         style={{ flexShrink: 0 }}
-        className={
-          `flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out ` +
-          (showTokenList
-            ? 'w-[360px] opacity-100'
-            : 'w-0 opacity-0')
-        }
+        className="flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out w-[360px] opacity-100"
       >
-        <div className={`flex-1 overflow-auto transition-opacity duration-300 ${showTokenList ? 'opacity-100' : 'opacity-0'}`}>
-          <TokenList showNext={introStep === 2} onNext={() => setIntroStep(3)} />
+        <div className="flex-1 overflow-auto transition-opacity duration-300 opacity-100">
+          <TokenList />
         </div>
       </aside>
 
       {/* Right panel — Preview (fills rest) */}
-      <main
-        className={
-          `flex-1 flex flex-col bg-white overflow-hidden transition-opacity duration-300 ` +
-          (showPreview ? 'opacity-100' : 'opacity-0 pointer-events-none')
-        }
-      >
-        {showPreview && <PreviewCanvas />}
+      <main className="flex-1 flex flex-col bg-white overflow-hidden transition-opacity duration-300 opacity-100">
+        <PreviewCanvas />
       </main>
 
       {selectedTokenId && <TokenEditPopup />}

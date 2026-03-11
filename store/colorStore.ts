@@ -97,6 +97,7 @@ const DEFAULT_GROUP_DESCRIPTIONS: Record<string, string> = {
 interface ColorStore {
   baseColors: BaseColors;
   tokens: DesignToken[];
+  customTokens: DesignToken[];
   isDark: boolean;
   selectedTokenId: string | null;
   activePreviewTab: PreviewTab;
@@ -168,6 +169,10 @@ interface ColorStore {
   newProject: () => void;
   saveProject: (saveAs?: boolean) => Promise<void>;
   loadProject: (data: ProjectData) => void;
+
+  // Custom tokens (manual additions from Step3)
+  addCustomToken: (token: DesignToken) => void;
+  removeCustomToken: (id: string) => void;
 }
 
 export interface ProjectData {
@@ -193,6 +198,15 @@ export interface ProjectData {
   defaultTokenFormula?: { operation: string; source: string; param: number };
   previewAssignments?: Record<string, string>;
   tokens: DesignToken[];
+  customTokens?: DesignToken[];
+}
+
+function mergeCustomTokens(freshTokens: DesignToken[], customTokens: DesignToken[]): DesignToken[] {
+  if (!customTokens?.length) return freshTokens;
+  const byId = new Map<string, DesignToken>();
+  for (const t of freshTokens) byId.set(t.id, t);
+  for (const c of customTokens) byId.set(c.id, c);
+  return Array.from(byId.values());
 }
 
 // ── Manual override merge ─────────────────────────────────────────────────────
@@ -225,7 +239,8 @@ export const useColorStore = create<ColorStore>()(
   persist(
     (set, get) => ({
   baseColors: DEFAULT_BASE,
-  tokens: generateTokensFromNaming(DEFAULT_BASE, INIT_NAMING, false, true),
+  customTokens: [],
+  tokens: mergeCustomTokens(generateTokensFromNaming(DEFAULT_BASE, INIT_NAMING, false, true), []),
   isDark: false,
   useOklch: true,
   generateRules: {},
@@ -286,6 +301,7 @@ export const useColorStore = create<ColorStore>()(
       get().tokens,
     );
     tokens = get()._filterTokensByEnabled(tokens);
+    tokens = mergeCustomTokens(tokens, get().customTokens);
     set({ baseColors, tokens });
   },
 
@@ -297,6 +313,7 @@ export const useColorStore = create<ColorStore>()(
       let tokens = generateTokensFromNaming(state.baseColors, makeNamingConfig(state), state.isDark, state.useOklch);
       // use the updated flags when filtering
       tokens = tokens.filter(t => ge[t.group] ?? true);
+      tokens = mergeCustomTokens(tokens, state.customTokens);
       return { groupEnabled: ge, tokens };
     });
   },
@@ -345,6 +362,7 @@ export const useColorStore = create<ColorStore>()(
     Object.keys(prev).forEach(k => { if (!(k in resolved)) resolved[k] = prev[k]; });
     let tokens = generateTokensFromNaming(resolved, makeNamingConfig(get()), get().isDark, get().useOklch);
     tokens = get()._filterTokensByEnabled(tokens);
+    tokens = mergeCustomTokens(tokens, get().customTokens);
     set({ baseColors: resolved, tokens });
   },
 
@@ -369,7 +387,7 @@ export const useColorStore = create<ColorStore>()(
       get()._filterTokensByEnabled(generateTokensFromNaming(baseColors, makeNamingConfig(get()), isDark, get().useOklch)),
       get().tokens,
     );
-    set({ isDark, tokens });
+    set({ isDark, tokens: mergeCustomTokens(tokens, get().customTokens) });
   },
 
   setSelectedToken: (id) => set({ selectedTokenId: id }),
@@ -530,6 +548,7 @@ export const useColorStore = create<ColorStore>()(
       defaultTokenFormulaMode: 'formula',
       defaultTokenFormula: { operation: 'setLightness', source: 'primary', param: 50 },
       previewAssignments: {},
+      customTokens: [],
       tokens,
       selectedTokenId: null,
     });
@@ -559,6 +578,7 @@ export const useColorStore = create<ColorStore>()(
       defaultTokenFormula: s.defaultTokenFormula,
       previewAssignments: s.previewAssignments,
       tokens: s.tokens,
+      customTokens: s.customTokens,
     };
     const json = JSON.stringify(data, null, 2);
     const defaultName = `${get().projectName}.json`;
@@ -611,6 +631,7 @@ export const useColorStore = create<ColorStore>()(
       if (saved.isFormulaOverride) return { ...saved };
       return t;
     });
+    const customTokens = data.customTokens ?? [];
     set({
       projectName: data.projectName ?? 'Untitled',
       baseColors: mergedBaseColors,
@@ -637,7 +658,8 @@ export const useColorStore = create<ColorStore>()(
       defaultTokenFormulaMode: data.defaultTokenFormulaMode ?? 'formula',
       defaultTokenFormula: data.defaultTokenFormula ?? { operation: 'setLightness', source: 'primary', param: 50 },
       previewAssignments: data.previewAssignments ?? {},
-      tokens,
+      customTokens,
+      tokens: mergeCustomTokens(tokens, customTokens),
       selectedTokenId: null,
     });
   },
@@ -646,26 +668,45 @@ export const useColorStore = create<ColorStore>()(
   setNamingNamespace: (ns) => {
     const nc = { ...makeNamingConfig(get()), namespace: ns };
     const tokens = generateTokensFromNaming(get().baseColors, nc, get().isDark, get().useOklch);
-    set({ namingNamespace: ns, tokens });
+    set({ namingNamespace: ns, tokens: mergeCustomTokens(tokens, get().customTokens) });
   },
 
   setNamingOrder: (order) => {
     const nc = { ...makeNamingConfig(get()), order };
     const tokens = generateTokensFromNaming(get().baseColors, nc, get().isDark, get().useOklch);
-    set({ namingOrder: order, tokens });
+    set({ namingOrder: order, tokens: mergeCustomTokens(tokens, get().customTokens) });
   },
 
   setNamingEnabled: (enabled) => {
     const nc = { ...makeNamingConfig(get()), enabled };
     const tokens = generateTokensFromNaming(get().baseColors, nc, get().isDark, get().useOklch);
-    set({ namingEnabled: enabled, tokens });
+    set({ namingEnabled: enabled, tokens: mergeCustomTokens(tokens, get().customTokens) });
   },
 
   setNamingValue: (key, vals) => {
     const namingValues = { ...get().namingValues, [key]: vals };
     const nc = { ...makeNamingConfig(get()), values: namingValues };
     const tokens = generateTokensFromNaming(get().baseColors, nc, get().isDark, get().useOklch);
-    set({ namingValues, tokens });
+    set({ namingValues, tokens: mergeCustomTokens(tokens, get().customTokens) });
+  },
+
+  addCustomToken: (token) => {
+    set(state => {
+      const customTokens = mergeCustomTokens([], [...state.customTokens, token]);
+      const tokens = mergeCustomTokens(state.tokens, customTokens);
+      return { customTokens, tokens };
+    });
+  },
+
+  removeCustomToken: (id) => {
+    set(state => {
+      const customTokens = state.customTokens.filter(t => t.id !== id);
+      const tokens = mergeCustomTokens(
+        generateTokensFromNaming(state.baseColors, makeNamingConfig(state), state.isDark, state.useOklch),
+        customTokens
+      );
+      return { customTokens, tokens };
+    });
   },
     }),
     {

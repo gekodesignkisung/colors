@@ -25,9 +25,10 @@ const SECTIONS: { key: SectionKey; label: string; desc: string; isSingle?: boole
 interface NamingPanelProps {
   showNext?: boolean;
   onNext?: () => void;
+  scroll?: boolean;
 }
 
-export default function NamingPanel({ showNext, onNext }: NamingPanelProps) {
+export default function NamingPanel({ showNext, onNext, scroll = true }: NamingPanelProps) {
   // ── Store state ──
   const namingNamespace = useColorStore(s => s.namingNamespace);
   const namingOrder     = useColorStore(s => s.namingOrder);
@@ -173,7 +174,7 @@ export default function NamingPanel({ showNext, onNext }: NamingPanelProps) {
       </div>
 
       {/* Sections */}
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 ${scroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>
         {SECTIONS.sort((a, b) => namingOrder.indexOf(a.key) - namingOrder.indexOf(b.key)).map(sec => {
           const isOn       = namingEnabled.includes(sec.key);
           const isExpanded = expandedKey === sec.key;
