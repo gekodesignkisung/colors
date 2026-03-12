@@ -356,15 +356,14 @@ export default function KeyColorEditPopup({
 
   // Manual mode
   const getPositionStyle = () => {
-    if (anchorPos) {
-      return {
-        top: anchorPos.y + 'px',
-        // bring popup even closer to click point
-        left: anchorPos.x + 30 + 'px',
-      } as React.CSSProperties;
-    }
-    // default fallback positions
-    return { top: '200px', left: '150px' } as React.CSSProperties;
+    // always center the popup on screen
+    return {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      zIndex: 60,
+    } as React.CSSProperties;
   };
 
   if (globalGenerationMode === 'manual') {

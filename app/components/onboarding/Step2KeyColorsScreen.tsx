@@ -1,4 +1,4 @@
-import BaseColorInput from '../BaseColorInput';
+import Step2BaseColorInput from '../Step2BaseColorInput';
 
 type Props = {
   onPrev: () => void;
@@ -24,44 +24,20 @@ export default function Step2KeyColorsScreen({ onPrev, onNext }: Props) {
         <div className="w-full h-[2px] bg-[#404050]" />
 
         <div className="pt-3">
-          <p className="text-[#808090]" style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, lineHeight: '25.2px' }}>
-            Select the primary brand colors for your project.
+          <p className="text-[#808090]" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, lineHeight: '25.2px' }}>
+           This step allows you to create a few key colors that will form the foundation of your design system. You can choose between automatic and manual modes, and define the primary, secondary, tertiary, and neutral colors that represent your product or brand. These colors and settings can be changed at any time later.
           </p>
         </div>
       </div>
 
       <div className="flex w-[1080px] max-w-full flex-1 min-h-0 items-stretch pt-6 pb-6">
         <div className="grid w-full grid-cols-12 gap-6 min-h-0">
-          <section className="col-span-12 lg:col-span-4 min-h-0">
-            <div className="rounded-2xl border border-[#E7E7EE] bg-white p-5 shadow-[0px_8px_24px_rgba(0,0,0,0.06)]">
-              <h2 className="text-[16px] font-semibold text-[#333]">
-                선택 가이드
-              </h2>
-              <ul className="mt-3 space-y-2 text-[14px] leading-[20px] text-[#666]">
-                <li>- Primary: 대표 브랜드 컬러</li>
-                <li>- Secondary: 보조/강조 컬러</li>
-                <li>- Neutral: 배경/서피스 기반</li>
-                <li>- Error: 경고/에러 상태</li>
-              </ul>
 
-              <div className="mt-4 rounded-xl bg-[#F7F7F9] p-4 text-[13px] leading-[18px] text-[#666]">
-                팁: 대비가 낮으면 토큰 생성 후 텍스트 가독성이 떨어질 수 있어요.
-              </div>
-            </div>
-          </section>
 
-          <section className="col-span-12 lg:col-span-8 min-h-0">
-            <div className="h-full rounded-2xl border border-[#E7E7EE] bg-white shadow-[0px_8px_24px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="border-b border-[#EFEFF4] px-5 py-4">
-                <div className="text-[14px] font-semibold text-[#333]">
-                  Key color picker
-                </div>
-                <div className="mt-1 text-[13px] text-[#808090]">
-                  4개의 베이스 컬러를 설정하면 다음 단계에서 네이밍 룰을 정의합니다.
-                </div>
-              </div>
+          <section className="col-span-12 min-h-0 w-[800px] mx-auto">
+            <div className="h-full bg-white">
               <div>
-                <BaseColorInput introStep={0} />
+                <Step2BaseColorInput introStep={0} />
               </div>
             </div>
           </section>

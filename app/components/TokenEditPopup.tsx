@@ -438,36 +438,36 @@ export default function TokenEditPopup() {
         {/* Footer */}
         <div className="flex items-center justify-between h-[80px] px-[30px] shrink-0 border-t border-[#f0f0f0]">
           <div className="flex gap-[10px]">
-            <button
+            <Button
               type="button"
               onClick={handleReset}
-              className="h-9 px-[10px] bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
+              className="h-9 px-[10px] bg-[#f5f5f5] text-[15px] font-semibold text-[#808088] hover:bg-[#eee]"
             >
               Reset
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleSetAsDefault}
-              className="h-9 px-[10px] bg-[#eef5ff] rounded-[10px] text-[15px] font-semibold text-[#7490e7] hover:bg-[#ddeaff] transition-colors"
+              className="h-9 px-[10px] bg-[#eef5ff] text-[15px] font-semibold text-[#7490e7] hover:bg-[#ddeaff]"
             >
               Set Default
-            </button>
+            </Button>
           </div>
           <div className="flex gap-[10px]">
-            <button
+            <Button
               type="button"
               onClick={() => setSelectedToken(null)}
-              className="w-[100px] h-9 bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
+              className="w-[100px] h-9 bg-[#f5f5f5] text-[15px] font-semibold text-[#808088] hover:bg-[#eee]"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleApply}
-              className="w-[100px] h-9 bg-[#666666] rounded-[10px] text-[15px] font-semibold text-white hover:bg-[#555] transition-colors"
+              className="w-[100px] h-9 bg-[#666666] text-[15px] font-semibold text-white hover:bg-[#555]"
             >
               Save
-            </button>
+            </Button>
           </div>
         </div>
 

@@ -36,13 +36,13 @@ export default function Step1CreateProject({ onPrev, onNext }: Props) {
 
         {/* Subtitle */}
         <div className="pt-3">
-          <p className="text-[#808090]" style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, lineHeight: '25.2px' }}>
+          <p className="text-[#808090]" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, lineHeight: '25.2px' }}>
             Enter a name for your new design system project.
           </p>
         </div>
 
         {/* Input Area (Centered vertically in its block) */}
-        <div className="flex w-full justify-center items-center h-[350px]">
+        <div className="flex w-full justify-center items-center h-[500px]">
           <div className="flex items-center justify-between w-[400px] h-[50px] border border-[#808090] rounded-[50px] px-5 bg-white">
             <input
               value={localName}
