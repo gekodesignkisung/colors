@@ -128,7 +128,7 @@ export default function GenerateSettingsPopup({ onClose }: Props) {
             </button>
             <button
               onClick={handleSetAsDefault}
-              className="h-9 px-4 bg-[#f5f5f5] rounded-[10px] text-[14px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
+              className="h-9 px-4 bg-[#e8eeff] rounded-[10px] text-[14px] font-medium text-[#4a7cf5] hover:bg-[#d8e4ff] transition-colors"
             >
               Set as default
             </button>
