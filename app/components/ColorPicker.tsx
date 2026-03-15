@@ -1,18 +1,14 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { hexToHSL, hslToHex, hslToHSV, hsvToHSL, hsvToHex, rgbToHsl } from '@/lib/colorUtils';
 
-interface ColorPickerProps {
-  color: string;
-  onChange: (color: string) => void;
-  onClose: (savedColor?: string) => void;
-  anchorPos?: { x: number; y: number };
-}
-
-const PICKER_W = 260;
-const PICKER_H = 502; // palette(260) + sliders(72) + preview(120) + buttons(50)
-const MARGIN = 8;
+// ─── Constants ────────────────────────────────────────────────────────────────
+const PAL_W   = 260;
+const PAL_H   = 260;
+const MARGIN  = 8;
+const PICKER_W = 592;
+const PICKER_H = 500;
 
 function computePos(anchor: { x: number; y: number }) {
   let left = anchor.x + MARGIN;
@@ -22,359 +18,425 @@ function computePos(anchor: { x: number; y: number }) {
   return { left: Math.max(MARGIN, left), top: Math.max(MARGIN, top) };
 }
 
+function hsvToRgb(h: number, s: number, v: number) {
+  const sv = s / 100, vv = v / 100;
+  const hh = h % 360;
+  const c = vv * sv;
+  const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+  const m = vv - c;
+  let r = 0, g = 0, b = 0;
+  if (hh < 60)       { r = c; g = x; b = 0; }
+  else if (hh < 120) { r = x; g = c; b = 0; }
+  else if (hh < 180) { r = 0; g = c; b = x; }
+  else if (hh < 240) { r = 0; g = x; b = c; }
+  else if (hh < 300) { r = x; g = 0; b = c; }
+  else               { r = c; g = 0; b = x; }
+  return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
+}
+
+// ─── Channel input (RGB / HSV) ────────────────────────────────────────────────
+function ChannelInput({ label, value, min, max, onChange }: {
+  label: string; value: number; min: number; max: number;
+  onChange: (v: number) => void;
+}) {
+  const [local, setLocal] = useState(String(Math.round(value)));
+  const active = useRef(false);
+
+  useEffect(() => {
+    if (!active.current) setLocal(String(Math.round(value)));
+  }, [value]);
+
+  const commit = (raw: string) => {
+    active.current = false;
+    const n = parseInt(raw, 10);
+    if (!isNaN(n)) onChange(Math.max(min, Math.min(max, n)));
+    else setLocal(String(Math.round(value)));
+  };
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
+      <div style={{
+        border: '1px solid #ddd', borderRadius: 8, height: 36,
+        display: 'flex', alignItems: 'center', padding: '0 4px', width: '100%', boxSizing: 'border-box',
+      }}>
+        <input
+          type="number" min={min} max={max} value={local}
+          onChange={e => { active.current = true; setLocal(e.target.value); }}
+          onBlur={e => commit(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value); }}
+          style={{
+            width: '100%', background: 'transparent', border: 'none', outline: 'none',
+            fontSize: 13, fontWeight: 600, color: '#333',
+            fontFamily: 'Inter, sans-serif', textAlign: 'center',
+            MozAppearance: 'textfield',
+          } as React.CSSProperties}
+        />
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 500, color: '#999' }}>{label}</span>
+    </div>
+  );
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+interface ColorPickerProps {
+  color: string;
+  onChange: (color: string) => void;
+  onClose: (savedColor?: string) => void;
+  anchorPos?: { x: number; y: number };
+}
+
 export default function ColorPicker({ color, onChange, onClose, anchorPos }: ColorPickerProps) {
   const initialHsl = hexToHSL(color);
   const initialHsv = hslToHSV(initialHsl.h, initialHsl.s, initialHsl.l);
 
-  const [tempHsv, setTempHsv] = useState(initialHsv);
-  const [tempRgb, setTempRgb] = useState<{ r: number; g: number; b: number }>({ r: 0, g: 0, b: 0 });
-  const [isDraggingPalette, setIsDraggingPalette] = useState(false);
-  const [isDraggingHue, setIsDraggingHue] = useState(false);
-  const [isDraggingSaturation, setIsDraggingSaturation] = useState(false);
-  const [isDraggingValue, setIsDraggingValue] = useState(false);
+  const [hsv, setHsv] = useState(initialHsv);
+  const originalColor = useRef(color);
   const [colorFormat, setColorFormat] = useState<'hex' | 'rgb' | 'hsv'>('hex');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
+  const [inputVal, setInputVal] = useState('');
+  const [editing, setEditing] = useState(false);
 
   const paletteRef = useRef<HTMLDivElement>(null);
-  const hueRef = useRef<HTMLDivElement>(null);
-  const saturationRef = useRef<HTMLDivElement>(null);
-  const valueRef = useRef<HTMLDivElement>(null);
-  const tempRgbRef = useRef(tempRgb);
-
-  const getCurrentRgb = () => {
-    if (colorFormat === 'rgb') return tempRgb;
-    const h = tempHsv.h % 360;
-    const s = tempHsv.s / 100;
-    const v = tempHsv.v / 100;
-    const c = v * s;
-    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-    const m = v - c;
-    let r = 0, g = 0, b = 0;
-    if (0 <= h && h < 60)        { r = c; g = x; b = 0; }
-    else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
-    else if (120 <= h && h < 180){ r = 0; g = c; b = x; }
-    else if (180 <= h && h < 240){ r = 0; g = x; b = c; }
-    else if (240 <= h && h < 300){ r = x; g = 0; b = c; }
-    else if (300 <= h && h < 360){ r = c; g = 0; b = x; }
-    return { r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) };
-  };
-
-  const updateRedHorizontal   = (e: MouseEvent | React.MouseEvent) => {
-    if (!hueRef.current) return;
-    const rect = hueRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const r = Math.round((x / rect.width) * 255);
-    const rgb = tempRgbRef.current;
-    setTempRgb({ r, g: rgb.g, b: rgb.b });
-  };
-  const updateGreenHorizontal = (e: MouseEvent | React.MouseEvent) => {
-    if (!saturationRef.current) return;
-    const rect = saturationRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const g = Math.round((x / rect.width) * 255);
-    const rgb = tempRgbRef.current;
-    setTempRgb({ r: rgb.r, g, b: rgb.b });
-  };
-  const updateBlueHorizontal  = (e: MouseEvent | React.MouseEvent) => {
-    if (!valueRef.current) return;
-    const rect = valueRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const b = Math.round((x / rect.width) * 255);
-    const rgb = tempRgbRef.current;
-    setTempRgb({ r: rgb.r, g: rgb.g, b });
-  };
-
-  const updatePalettePosition = (e: MouseEvent | React.MouseEvent) => {
-    if (!paletteRef.current) return;
-    const rect = paletteRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
-    setTempHsv(prev => ({ ...prev, s: Math.round((x / rect.width) * 100), v: Math.round(100 - (y / rect.height) * 100) }));
-  };
-  const updateHuePosition = (e: MouseEvent | React.MouseEvent) => {
-    if (!hueRef.current) return;
-    const rect = hueRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    setTempHsv(prev => ({ ...prev, h: Math.min(Math.round((x / rect.width) * 360), 360) }));
-  };
-  const updateSaturationPosition = (e: MouseEvent | React.MouseEvent) => {
-    if (!saturationRef.current) return;
-    const rect = saturationRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    setTempHsv(prev => ({ ...prev, s: Math.round((x / rect.width) * 100) }));
-  };
-  const updateValuePosition = (e: MouseEvent | React.MouseEvent) => {
-    if (!valueRef.current) return;
-    const rect = valueRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    setTempHsv(prev => ({ ...prev, v: Math.round((x / rect.width) * 100) }));
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDraggingPalette && colorFormat !== 'rgb') updatePalettePosition(e);
-      if (colorFormat === 'rgb') {
-        if (isDraggingHue) updateRedHorizontal(e);
-        if (isDraggingSaturation) updateGreenHorizontal(e);
-        if (isDraggingValue) updateBlueHorizontal(e);
-      } else {
-        if (isDraggingHue) updateHuePosition(e);
-        if (isDraggingSaturation) updateSaturationPosition(e);
-        if (isDraggingValue) updateValuePosition(e);
-      }
-    };
-    const handleMouseUp = () => {
-      setIsDraggingPalette(false);
-      setIsDraggingHue(false);
-      setIsDraggingSaturation(false);
-      setIsDraggingValue(false);
-    };
-    if (isDraggingPalette || isDraggingHue || isDraggingSaturation || isDraggingValue) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDraggingPalette, isDraggingHue, isDraggingSaturation, isDraggingValue, tempHsv, colorFormat, tempRgb]);
-
-  useEffect(() => {
-    if (colorFormat === 'rgb') {
-      const h = tempHsv.h % 360;
-      const s = tempHsv.s / 100;
-      const v = tempHsv.v / 100;
-      const c = v * s;
-      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-      const m = v - c;
-      let r = 0, g = 0, b = 0;
-      if (0 <= h && h < 60)        { r = c; g = x; b = 0; }
-      else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
-      else if (120 <= h && h < 180){ r = 0; g = c; b = x; }
-      else if (180 <= h && h < 240){ r = 0; g = x; b = c; }
-      else if (240 <= h && h < 300){ r = x; g = 0; b = c; }
-      else if (300 <= h && h < 360){ r = c; g = 0; b = x; }
-      setTempRgb({ r: Math.round((r + m) * 255), g: Math.round((g + m) * 255), b: Math.round((b + m) * 255) });
-    }
-  }, [colorFormat, tempHsv]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isDropdownOpen && !(event.target as Element).closest('.picker-dropdown')) {
-        setIsDropdownOpen(false);
-      }
-    };
-    if (isDropdownOpen) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isDropdownOpen]);
-
+  const hueRef     = useRef<HTMLDivElement>(null);
+  const dragging   = useRef<'palette' | 'hue' | null>(null);
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
-  useEffect(() => {
-    const hsl = hsvToHSL(tempHsv.h, tempHsv.s, tempHsv.v);
-    onChangeRef.current(hslToHex(hsl.h, hsl.s, hsl.l));
-  }, [tempHsv.h, tempHsv.s, tempHsv.v]);
+  // ── Derived color ─────────────────────────────────────────────────────────
+  const currentHex = hsvToHex(hsv.h, hsv.s, hsv.v);
+  const currentRgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
 
-  useEffect(() => { tempRgbRef.current = tempRgb; }, [tempRgb]);
+  // ── Notify parent ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    onChangeRef.current(currentHex);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hsv.h, hsv.s, hsv.v]);
+
+  // ── Interactions ──────────────────────────────────────────────────────────
+  const handlePaletteDrag = useCallback((clientX: number, clientY: number) => {
+    const el = paletteRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const s = Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 100);
+    const v = Math.round((1 - Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))) * 100);
+    setHsv(prev => ({ ...prev, s, v }));
+  }, []);
+
+  const handleHueDrag = useCallback((clientX: number) => {
+    const el = hueRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const h = Math.min(Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 360), 360);
+    setHsv(prev => ({ ...prev, h }));
+  }, []);
 
   useEffect(() => {
-    if (colorFormat === 'rgb') {
-      const hex = `#${((tempRgb.r << 16) | (tempRgb.g << 8) | tempRgb.b).toString(16).padStart(6, '0').toUpperCase()}`;
-      onChangeRef.current(hex);
+    const onMove = (e: MouseEvent) => {
+      if (dragging.current === 'palette') handlePaletteDrag(e.clientX, e.clientY);
+      if (dragging.current === 'hue')     handleHueDrag(e.clientX);
+    };
+    const onUp = () => { dragging.current = null; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup',   onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup',   onUp);
+    };
+  }, [handlePaletteDrag, handleHueDrag]);
+
+  // ── Dropdown close-on-outside ─────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (isDropdownOpen && !(e.target as Element).closest('.picker-dropdown')) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isDropdownOpen]);
+
+  // ── Value input helpers ───────────────────────────────────────────────────
+  const getDisplayValue = useCallback(() => {
+    if (colorFormat === 'hex') return currentHex.replace('#', '').toUpperCase();
+    if (colorFormat === 'rgb') return `${currentRgb.r} ${currentRgb.g} ${currentRgb.b}`;
+    return `${Math.round(hsv.h)} ${Math.round(hsv.s)} ${Math.round(hsv.v)}`;
+  }, [colorFormat, currentHex, currentRgb, hsv]);
+
+  // sync display when not editing
+  useEffect(() => {
+    if (!editing) setInputVal(getDisplayValue());
+  }, [editing, getDisplayValue]);
+
+  const applyInput = useCallback((raw: string) => {
+    const v = raw.trim();
+    if (colorFormat === 'hex') {
+      const clean = v.replace(/^#/, '');
+      if (/^[0-9A-Fa-f]{6}$/.test(clean)) {
+        const hsl = hexToHSL('#' + clean);
+        setHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
+      }
+    } else if (colorFormat === 'rgb') {
+      const m = v.match(/^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})$/);
+      if (m) {
+        const r = parseInt(m[1]), g = parseInt(m[2]), b = parseInt(m[3]);
+        if (r <= 255 && g <= 255 && b <= 255) {
+          const hsl = rgbToHsl(r, g, b);
+          setHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
+        }
+      }
+    } else {
+      const m = v.match(/^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})$/);
+      if (m) {
+        const h = parseInt(m[1]), s = parseInt(m[2]), vv = parseInt(m[3]);
+        if (h <= 360 && s <= 100 && vv <= 100) setHsv({ h, s, v: vv });
+      }
     }
-  }, [tempRgb, colorFormat]);
+  }, [colorFormat]);
 
-  const currentColor = colorFormat === 'rgb'
-    ? `#${((tempRgb.r << 16) | (tempRgb.g << 8) | tempRgb.b).toString(16).padStart(6, '0').toUpperCase()}`
-    : hsvToHex(tempHsv.h, tempHsv.s, tempHsv.v);
+  const commitInput = useCallback((raw: string) => {
+    applyInput(raw);
+    setEditing(false);
+  }, [applyInput]);
 
-  const getDisplayValue = () => {
-    if (colorFormat === 'hex') return currentColor.toUpperCase().replace('#', '');
-    if (colorFormat === 'rgb') return `R${tempRgb.r} G${tempRgb.g} B${tempRgb.b}`;
-    return `hsv(${Math.round(tempHsv.h)}, ${Math.round(tempHsv.s)}%, ${Math.round(tempHsv.v)}%)`;
-  };
-
-  const handleSave = () => {
-    const hsl = hsvToHSL(tempHsv.h, tempHsv.s, tempHsv.v);
-    onClose(hslToHex(hsl.h, hsl.s, hsl.l));
-  };
-
+  // ── Styles ────────────────────────────────────────────────────────────────
   const posStyle = anchorPos
     ? { position: 'fixed' as const, ...computePos(anchorPos), zIndex: 70 }
     : {};
 
   return (
     <div
-      className="w-[260px] flex flex-col overflow-hidden shadow-2xl"
-      style={{ borderRadius: 10, borderTopLeftRadius: 0, borderTopRightRadius: 0, ...posStyle }}
+      style={{
+        width: PICKER_W, background: 'white', borderRadius: 20,
+        boxShadow: '0px 4px 20px rgba(0,0,0,0.1)',
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden', fontFamily: 'Inter, sans-serif',
+        ...posStyle,
+      }}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
     >
-      {/* 2D HSV 팔레트 / RGB 모드 */}
-      {colorFormat === 'rgb' ? (
-        <div className="flex flex-col w-[260px]">
-          {/* Red */}
+      {/* ── Main body ──────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 24, padding: 24 }}>
+
+        {/* ── Left column ──────────────────────────────────────────────────── */}
+        <div style={{ width: PAL_W, display: 'flex', flexDirection: 'column', gap: 20, flexShrink: 0 }}>
+
+          {/* HSV 2D Palette */}
+          <div
+            ref={paletteRef}
+            style={{ position: 'relative', width: PAL_W, height: PAL_H, borderRadius: 8, overflow: 'hidden', cursor: 'default' }}
+            onMouseDown={e => { dragging.current = 'palette'; handlePaletteDrag(e.clientX, e.clientY); }}
+          >
+            {/* Base hue */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `hsl(${hsv.h}, 100%, 50%)`,
+            }} />
+            {/* White → transparent (saturation) */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to right, white, transparent)',
+            }} />
+            {/* Black overlay (value) */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(to top, black, transparent)',
+            }} />
+            {/* Cursor */}
+            <div style={{
+              position: 'absolute',
+              left: `${hsv.s}%`, top: `${100 - hsv.v}%`,
+              transform: 'translate(-50%, -50%)',
+              width: 16, height: 16, borderRadius: '50%',
+              background: currentHex,
+              border: '2px solid white',
+              boxShadow: '0 0 0 1.5px rgba(0,0,0,0.35)',
+              pointerEvents: 'none',
+            }} />
+          </div>
+
+          {/* Hue slider */}
           <div
             ref={hueRef}
-            className="relative w-full h-[80px] cursor-pointer"
-            style={{ background: 'linear-gradient(to right, #000000, #ff0000)' }}
-            onMouseDown={() => setIsDraggingHue(true)}
+            style={{
+              height: 30, borderRadius: 8, cursor: 'default', position: 'relative',
+              background: 'linear-gradient(to right, hsl(0,100%,50%), hsl(30,100%,50%), hsl(60,100%,50%), hsl(90,100%,50%), hsl(120,100%,50%), hsl(150,100%,50%), hsl(180,100%,50%), hsl(210,100%,50%), hsl(240,100%,50%), hsl(270,100%,50%), hsl(300,100%,50%), hsl(330,100%,50%), hsl(360,100%,50%))',
+              flexShrink: 0,
+            }}
+            onMouseDown={e => { dragging.current = 'hue'; handleHueDrag(e.clientX); }}
           >
-            <div className="absolute top-0 bottom-0 w-[2px] bg-white pointer-events-none z-50"
-              style={{ left: `${(getCurrentRgb().r / 255) * 100}%`, transform: 'translateX(-50%)' }} />
-          </div>
-          {/* Green */}
-          <div
-            ref={saturationRef}
-            className="relative w-full h-[80px] cursor-pointer"
-            style={{ background: 'linear-gradient(to right, #000000, #00ff00)' }}
-            onMouseDown={() => setIsDraggingSaturation(true)}
-          >
-            <div className="absolute top-0 bottom-0 w-[2px] bg-white pointer-events-none z-50"
-              style={{ left: `${(getCurrentRgb().g / 255) * 100}%`, transform: 'translateX(-50%)' }} />
-          </div>
-          {/* Blue */}
-          <div
-            ref={valueRef}
-            className="relative w-full h-[80px] cursor-pointer"
-            style={{ background: 'linear-gradient(to right, #000000, #0000ff)' }}
-            onMouseDown={() => setIsDraggingValue(true)}
-          >
-            <div className="absolute top-0 bottom-0 w-[2px] bg-white pointer-events-none z-50"
-              style={{ left: `${(getCurrentRgb().b / 255) * 100}%`, transform: 'translateX(-50%)' }} />
+            <div style={{
+              position: 'absolute', top: 0, bottom: 0,
+              left: `${(hsv.h / 360) * 100}%`,
+              transform: 'translateX(-50%)',
+              width: 3,
+              background: '#fff',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+              pointerEvents: 'none',
+            }} />
           </div>
         </div>
-      ) : (
-        <div
-          ref={paletteRef}
-          className="relative w-[260px] h-[260px] overflow-visible cursor-crosshair"
-          onMouseDown={e => { setIsDraggingPalette(true); updatePalettePosition(e); }}
-        >
-          <div className="absolute inset-0"
-            style={{ background: `linear-gradient(to right, hsl(${tempHsv.h}, 100%, 100%), hsl(${tempHsv.h}, 100%, 50%))` }} />
-          <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to top, hsl(0, 0%, 0%), transparent)' }} />
-          <div className="absolute w-[8px] h-[8px] border-[2px] border-white pointer-events-none z-50"
-            style={{ left: `${tempHsv.s}%`, top: `${100 - tempHsv.v}%`, transform: 'translate(-50%, -50%)' }} />
-        </div>
-      )}
 
-      {/* HSV 슬라이더 (RGB 모드 제외) */}
-      {colorFormat !== 'rgb' && (
-        <>
-          <div ref={hueRef} className="relative w-[260px] h-[24px] cursor-pointer"
-            style={{ background: 'linear-gradient(to right, hsl(0,100%,50%) 0%, hsl(60,100%,50%) 16.67%, hsl(120,100%,50%) 33.33%, hsl(180,100%,50%) 50%, hsl(240,100%,50%) 66.67%, hsl(300,100%,50%) 83.33%, hsl(360,100%,50%) 100%)' }}
-            onMouseDown={e => { setIsDraggingHue(true); updateHuePosition(e); }}>
-            <div className="absolute w-[2px] h-[24px] bg-white pointer-events-none z-50"
-              style={{ left: `${(tempHsv.h / 360) * 100}%`, transform: 'translateX(-50%)' }} />
-          </div>
-          <div ref={saturationRef} className="relative w-[260px] h-[24px] cursor-pointer"
-            style={{ background: `linear-gradient(to right, hsl(${tempHsv.h}, 0%, 50%), hsl(${tempHsv.h}, 100%, 50%))` }}
-            onMouseDown={e => { setIsDraggingSaturation(true); updateSaturationPosition(e); }}>
-            <div className="absolute w-[2px] h-[24px] bg-white pointer-events-none z-50"
-              style={{ left: `${tempHsv.s}%`, transform: 'translateX(-50%)' }} />
-          </div>
-          <div ref={valueRef} className="relative w-[260px] h-[24px] cursor-pointer"
-            style={{ background: `linear-gradient(to right, hsl(${tempHsv.h}, ${tempHsv.s}%, 0%), hsl(${tempHsv.h}, ${tempHsv.s}%, 100%))` }}
-            onMouseDown={e => { setIsDraggingValue(true); updateValuePosition(e); }}>
-            <div className="absolute w-[2px] h-[24px] bg-white pointer-events-none z-50"
-              style={{ left: `${tempHsv.v}%`, transform: 'translateX(-50%)' }} />
-          </div>
-        </>
-      )}
+        {/* ── Right column ─────────────────────────────────────────────────── */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
 
-      {/* 컬러 프리뷰 + 포맷 선택 */}
-      <div className="w-[260px] flex gap-[20px] items-center justify-center p-[20px] bg-white">
-        <div className="shrink-0 size-[80px]"
-          style={{
-            backgroundColor: currentColor,
-            border: currentColor.toLowerCase() === '#ffffff' ? '1px solid #dddddd' : 'none'
-          }} />
-        <div className="flex flex-[1_0_0] flex-col gap-[10px] items-center min-w-0">
-          {/* 포맷 드롭다운 */}
-          <div className="relative picker-dropdown w-[120px]">
-            <div
-              className="bg-white border border-[#b1b6bf] flex gap-[4px] h-[30px] items-center px-[8px] w-full cursor-pointer shadow-[0px_1px_2px_0px_rgba(5,32,81,0.05)]"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          {/* Swatch + X */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            {/* Color boxes: left = current, right = original */}
+            <div style={{ display: 'flex', flexShrink: 0 }}>
+              <div style={{
+                width: 80, height: 80,
+                borderRadius: '10px 0 0 10px',
+                background: currentHex,
+              }} />
+              <div
+                onClick={() => {
+                  const hsl = hexToHSL(originalColor.current);
+                  setHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
+                }}
+                style={{
+                  width: 80, height: 80,
+                  borderRadius: '0 10px 10px 0',
+                  background: originalColor.current,
+                  cursor: 'pointer',
+                }}
+              />
+            </div>
+            <button
+              onClick={() => { onChangeRef.current(originalColor.current); onClose(); }}
+              style={{
+                width: 24, height: 24, background: 'none', border: 'none',
+                cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
             >
-              <span className="flex-1 font-medium text-[#010814] text-[14px]">{colorFormat.toUpperCase()}</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="" src="/icon-bullet.svg" className="w-4 h-4" />
+              <img src="/icon-close.svg" alt="Close" width={20} height={20} />
+            </button>
+          </div>
+
+          {/* Value input */}
+          {colorFormat === 'hex' ? (
+            <div style={{
+              background: '#fff', border: '1px solid #ddd', borderRadius: 10,
+              height: 36, display: 'flex', alignItems: 'center',
+              padding: '0 12px', gap: 6, flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#999', userSelect: 'none' }}>#</span>
+              <input
+                type="text"
+                value={editing ? inputVal : getDisplayValue()}
+                onChange={e => { setEditing(true); setInputVal(e.target.value); }}
+                onFocus={() => { setEditing(true); setInputVal(getDisplayValue()); }}
+                onBlur={e => commitInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    applyInput((e.target as HTMLInputElement).value);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 13, fontWeight: 600, color: '#333',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+                placeholder="RRGGBB"
+              />
+            </div>
+          ) : colorFormat === 'rgb' ? (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <ChannelInput label="R" value={currentRgb.r} min={0} max={255} onChange={r => {
+                const hsl = rgbToHsl(r, currentRgb.g, currentRgb.b);
+                setHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
+              }} />
+              <ChannelInput label="G" value={currentRgb.g} min={0} max={255} onChange={g => {
+                const hsl = rgbToHsl(currentRgb.r, g, currentRgb.b);
+                setHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
+              }} />
+              <ChannelInput label="B" value={currentRgb.b} min={0} max={255} onChange={b => {
+                const hsl = rgbToHsl(currentRgb.r, currentRgb.g, b);
+                setHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
+              }} />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <ChannelInput label="H" value={hsv.h} min={0} max={360} onChange={h => setHsv(prev => ({ ...prev, h }))} />
+              <ChannelInput label="S" value={hsv.s} min={0} max={100} onChange={s => setHsv(prev => ({ ...prev, s }))} />
+              <ChannelInput label="V" value={hsv.v} min={0} max={100} onChange={v => setHsv(prev => ({ ...prev, v }))} />
+            </div>
+          )}
+
+          {/* Format dropdown */}
+          <div className="picker-dropdown" style={{ position: 'relative', flexShrink: 0 }}>
+            <div
+              onClick={() => setIsDropdownOpen(v => !v)}
+              style={{
+                background: 'white', border: '1px solid #ddd', borderRadius: 10,
+                height: 36, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '0 12px', cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#333' }}>{colorFormat.toUpperCase()}</span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon-bullet-dn.svg" alt="" width={20} height={20} />
             </div>
             {isDropdownOpen && (
-              <div className="absolute top-full left-0 w-full bg-white border border-[#b1b6bf] border-t-0 shadow-[0px_1px_2px_0px_rgba(5,32,81,0.05)] z-50">
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                background: 'white', border: '1px solid #ddd', borderRadius: 10,
+                overflow: 'hidden', zIndex: 50,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}>
                 {(['hex', 'rgb', 'hsv'] as const).map(fmt => (
-                  <div key={fmt} className="px-[8px] py-[6px] hover:bg-gray-100 cursor-pointer font-medium text-[#010814] text-[14px]"
-                    onClick={() => { setColorFormat(fmt); setIsDropdownOpen(false); }}>
+                  <div
+                    key={fmt}
+                    onClick={() => { setColorFormat(fmt); setIsDropdownOpen(false); setEditing(false); }}
+                    style={{
+                      padding: '8px 12px', cursor: 'pointer',
+                      fontSize: 14, fontWeight: 500,
+                      color: colorFormat === fmt ? '#606070' : '#333',
+                      background: colorFormat === fmt ? '#f5f5f5' : 'transparent',
+                      }}
+                    onMouseEnter={e => { if (colorFormat !== fmt) (e.currentTarget as HTMLElement).style.background = '#f9f9f9'; }}
+                    onMouseLeave={e => { if (colorFormat !== fmt) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  >
                     {fmt.toUpperCase()}
                   </div>
                 ))}
               </div>
             )}
           </div>
-          {/* 값 입력창 */}
-          <div className="bg-[#e6e7ea] flex items-center justify-center px-[4px] w-[120px] h-[36px]">
-            {colorFormat === 'hex' && <span className="font-medium text-[14px] text-[#354259] ml-[4px] mr-[-2px]">#</span>}
-            <input
-              type="text"
-              value={isEditing ? inputValue : getDisplayValue()}
-              onChange={e => {
-                const v = e.target.value;
-                if (colorFormat === 'hex' && /^[0-9A-Fa-f]*$/.test(v) && v.length <= 6) setInputValue(v);
-                else setInputValue(v);
-              }}
-              onFocus={() => { setIsEditing(true); setInputValue(getDisplayValue()); }}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  const v = inputValue.trim();
-                  if (colorFormat === 'hex' && /^[0-9A-Fa-f]{6}$/i.test(v)) {
-                    const hsl = hexToHSL('#' + v);
-                    setTempHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
-                  } else if (colorFormat === 'rgb') {
-                    const m = v.match(/^R?\s*(\d{1,3})\s+G?\s*(\d{1,3})\s+B?\s*(\d{1,3})$/i);
-                    if (m) {
-                      const r = parseInt(m[1]), g = parseInt(m[2]), b = parseInt(m[3]);
-                      if (r <= 255 && g <= 255 && b <= 255) {
-                        const hsl = rgbToHsl(r, g, b);
-                        setTempHsv(hslToHSV(hsl.h, hsl.s, hsl.l));
-                      }
-                    }
-                  } else if (colorFormat === 'hsv') {
-                    const m = v.match(/^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})$/);
-                    if (m) {
-                      const h = parseInt(m[1]), s = parseInt(m[2]), vv = parseInt(m[3]);
-                      if (h <= 360 && s <= 100 && vv <= 100) setTempHsv({ h, s, v: vv });
-                    }
-                  }
-                  setIsEditing(false);
-                  e.currentTarget.blur();
-                }
-              }}
-              onBlur={() => setIsEditing(false)}
-              className="bg-transparent text-center font-medium text-[14px] text-[#354259] border-none outline-none w-full"
-              placeholder={colorFormat === 'hex' ? 'FFFFFF' : ''}
-            />
-          </div>
         </div>
       </div>
 
-      {/* Cancel / OK */}
-      <div className="flex w-[260px]">
-        <button type="button" onClick={() => onClose()}
-          className="w-[130px] h-[50px] hover:bg-gray-700 transition-all duration-200 cursor-pointer flex items-center justify-center"
-          style={{ backgroundColor: '#888' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-picker-cancel.svg" alt="Cancel" className="w-[40px] h-[40px] hover:scale-[1.2] transition-all duration-200" />
-        </button>
-        <button type="button" onClick={handleSave}
-          className="w-[130px] h-[50px] hover:bg-gray-700 transition-all duration-200 cursor-pointer flex items-center justify-center"
-          style={{ backgroundColor: '#999' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-picker-ok.svg" alt="OK" className="w-[40px] h-[40px] hover:scale-[1.2] transition-all duration-200" />
-        </button>
+      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 24px 24px', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, width: 260 }}>
+          <button
+            onClick={() => { onChangeRef.current(originalColor.current); onClose(); }}
+            style={{
+              flex: 1, height: 36, borderRadius: 10, border: 'none',
+              background: '#f5f5f5', color: '#808088',
+              fontSize: 15, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              const hsl = hsvToHSL(hsv.h, hsv.s, hsv.v);
+              onClose(hslToHex(hsl.h, hsl.s, hsl.l));
+            }}
+            style={{
+              flex: 1, height: 36, borderRadius: 10, border: 'none',
+              background: '#606070', color: 'white',
+              fontSize: 15, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );

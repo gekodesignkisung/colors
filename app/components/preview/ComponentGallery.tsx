@@ -22,6 +22,7 @@ function Swatch({ color, hint, id }: { color: string; hint: string; id?: string 
   return (
     <div
       id={id}
+      data-color-el={id}
       className="w-[52px] h-[46px] rounded-[8px] flex items-center justify-center cursor-default"
       title={hint}
       // eslint-disable-next-line react/forbid-dom-props
@@ -56,6 +57,7 @@ export default function ComponentGallery() {
               {states.map(state => (
                 <button
                   id={`${variant}-button-${state}`}
+                  data-color-el={`${variant}-button-${state}`}
                   type="button"
                   key={state}
                   className="px-5 h-10 rounded-[10px] text-[13px] font-semibold border"

@@ -7,11 +7,24 @@ export type PanelSectionKey =
   | 'namespace' | 'theme' | 'category' | 'component'
   | 'type' | 'variant' | 'state';
 
+const POPUP_W = 560;
+const POPUP_H = 480;
+const MARGIN  = 12;
+
+function computePos(anchor: { x: number; y: number }) {
+  let left = anchor.x + MARGIN;
+  let top  = anchor.y + MARGIN;
+  if (left + POPUP_W > window.innerWidth  - MARGIN) left = anchor.x - POPUP_W - MARGIN;
+  if (top  + POPUP_H > window.innerHeight - MARGIN) top  = anchor.y - POPUP_H - MARGIN;
+  return { left: Math.max(MARGIN, left), top: Math.max(MARGIN, top) };
+}
+
 interface SectionEditPopupProps {
   sectionKey: PanelSectionKey;
   label: string;
   isSingle?: boolean;
   onClose: () => void;
+  anchorPos?: { x: number; y: number };
 }
 
 function sanitizeTag(raw: string) {
@@ -27,6 +40,7 @@ export default function SectionEditPopup({
   label,
   isSingle,
   onClose,
+  anchorPos,
 }: SectionEditPopupProps) {
   const namingNamespaceFromStore = useColorStore(s => s.namingNamespace);
   const namingValuesFromStore = useColorStore(s => s.namingValues);
@@ -104,9 +118,15 @@ export default function SectionEditPopup({
     setTimeout(() => setShowToast(false), 2000);
   };
 
+  const pos = anchorPos ? computePos(anchorPos) : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.1)] w-[560px] flex flex-col overflow-hidden max-h-[80vh]">
+    <div className="fixed inset-0 z-50 bg-black/30" onClick={onClose}>
+      <div
+        onClick={e => e.stopPropagation()}
+        className="bg-white rounded-[20px] shadow-[0px_4px_20px_0px_rgba(0,0,0,0.1)] w-[560px] flex flex-col overflow-hidden max-h-[80vh]"
+        style={pos ? { position: 'fixed', left: pos.left, top: pos.top } : { position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }}
+      >
         {/* Header */}
         <div className="flex h-[70px] items-center justify-between px-6 shrink-0">
           <p className="font-semibold text-[16px] text-[#333]">{label}</p>
@@ -141,7 +161,7 @@ export default function SectionEditPopup({
                   {((localEdit as string[]) ?? []).map(tag => (
                     <div
                       key={tag}
-                      className="flex items-center gap-2 px-3 h-[30px] bg-[#333] rounded-full text-[12px] font-medium text-[#fff]"
+                      className="flex items-center gap-2 px-3 h-[30px] bg-[#333] rounded-[8px] text-[12px] font-medium text-[#fff]"
                     >
                       {tag}
                       <button
@@ -210,8 +230,7 @@ export default function SectionEditPopup({
             </button>
             <button
               onClick={handleSave}
-              disabled={!isDirty}
-              className="h-9 w-[90px] bg-[#666] rounded-[10px] text-[14px] font-medium text-white hover:bg-[#555] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="h-9 w-[90px] bg-[#666] rounded-[10px] text-[14px] font-medium text-white hover:bg-[#555] transition-colors"
             >
               Save
             </button>

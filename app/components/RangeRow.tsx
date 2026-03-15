@@ -80,32 +80,39 @@ export interface RangeRowProps {
   ceil: number;
   value: { min: number; max: number };
   onChange: (v: { min: number; max: number }) => void;
+  unit?: string;
 }
 
-export function RangeRow({ label, floor, ceil, value, onChange }: RangeRowProps) {
+export function RangeRow({ label, floor, ceil, value, onChange, unit }: RangeRowProps) {
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));
 
   return (
     <div className="flex items-center gap-2">
       <span className="w-4 text-[11px] font-semibold text-[#999] text-right shrink-0">{label}</span>
       <DualTrack floor={floor} ceil={ceil} min={value.min} max={value.max} onChange={onChange} />
-      <input
-        type="number"
-        value={value.min}
-        min={floor}
-        max={value.max}
-        onChange={e => onChange({ ...value, min: clamp(Number(e.target.value), floor, value.max) })}
-        className="w-[50px] h-7 border border-[#ddd] rounded-[6px] px-1 text-[12px] font-medium text-[#333] text-center outline-none focus:border-[#808088]"
-      />
+      <div className="flex items-center gap-0.5">
+        <input
+          type="number"
+          value={value.min}
+          min={floor}
+          max={value.max}
+          onChange={e => onChange({ ...value, min: clamp(Number(e.target.value), floor, value.max) })}
+          className="w-[50px] h-7 border border-[#ddd] rounded-[6px] text-[13px] font-medium text-[#333] text-right outline-none focus:border-[#808088]" style={{ padding: '0 8px' }}
+        />
+        {unit && <span className="text-[10px] text-[#ccc] shrink-0">{unit}</span>}
+      </div>
       <span className="text-[11px] text-[#ccc] shrink-0">~</span>
-      <input
-        type="number"
-        value={value.max}
-        min={value.min}
-        max={ceil}
-        onChange={e => onChange({ ...value, max: clamp(Number(e.target.value), value.min, ceil) })}
-        className="w-[50px] h-7 border border-[#ddd] rounded-[6px] px-1 text-[12px] font-medium text-[#333] text-center outline-none focus:border-[#808088]"
-      />
+      <div className="flex items-center gap-0.5">
+        <input
+          type="number"
+          value={value.max}
+          min={value.min}
+          max={ceil}
+          onChange={e => onChange({ ...value, max: clamp(Number(e.target.value), value.min, ceil) })}
+          className="w-[50px] h-7 border border-[#ddd] rounded-[6px] text-[13px] font-medium text-[#333] text-right outline-none focus:border-[#808088]" style={{ padding: '0 8px' }}
+        />
+        {unit && <span className="text-[10px] text-[#ccc] shrink-0">{unit}</span>}
+      </div>
     </div>
   );
 }

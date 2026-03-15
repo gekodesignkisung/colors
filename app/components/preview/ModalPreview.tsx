@@ -42,6 +42,7 @@ export default function ModalPreview() {
               type="button"
               className="px-4 py-2 rounded-full text-sm font-medium border-0 cursor-pointer bg-transparent"
               id="alert-cancel"
+              data-color-el="alert-cancel"
               // eslint-disable-next-line react/forbid-dom-props
               style={{ color: getColor('alert-cancel', p, 'background', 'default') }}
             >
@@ -51,6 +52,7 @@ export default function ModalPreview() {
               type="button"
               className="px-4 py-2 rounded-full text-sm font-medium border-0 cursor-pointer"
               id="alert-save"
+              data-color-el="alert-save"
               // eslint-disable-next-line react/forbid-dom-props
               style={{ backgroundColor: getColor('alert-save', p, 'background', 'default'), color: getColor('alert-save', p, 'text', 'default') }}
             >
@@ -78,6 +80,7 @@ export default function ModalPreview() {
                       className="w-12 h-12 rounded-full flex items-center justify-center text-base"
                       // eslint-disable-next-line react/forbid-dom-props
                       id={`action-${label}`}
+                      data-color-el={`action-${label}`}
                       style={{ backgroundColor: getColor(`action-${label}`, v, 'background', 'default') }}
                     >
                       <span style={{ color: getColor(`action-${label}`, v, 'text', 'default') }}>
@@ -108,6 +111,7 @@ export default function ModalPreview() {
           <div className="flex flex-col items-center gap-1">
             <div
               id="tooltip-box"
+              data-color-el="tooltip-box"
               className="px-3 py-2 rounded-lg text-xs shadow-lg text-white"
               // eslint-disable-next-line react/forbid-dom-props
               style={{ backgroundColor: getColor('tooltip-box', s, 'background', 'default') }}
@@ -115,6 +119,7 @@ export default function ModalPreview() {
               이 항목에 대한 설명입니다
             </div>
             <div
+              data-color-el="tooltip-arrow"
               className="w-2 h-2 rotate-45 -mt-1.5"
               // eslint-disable-next-line react/forbid-dom-props
               style={{ backgroundColor: getColor('tooltip-arrow', s, 'background', 'default') }}
@@ -123,6 +128,7 @@ export default function ModalPreview() {
               type="button"
               className="px-4 py-2 rounded-full text-sm border-0 cursor-pointer"
               id="tooltip-hover-button"
+              data-color-el="tooltip-hover-button"
               // eslint-disable-next-line react/forbid-dom-props
               style={{ backgroundColor: getColor('tooltip-hover-button', s, 'background', 'hover'), color: getColor('tooltip-hover-button', s, 'text', 'default') }}
             >
@@ -133,11 +139,13 @@ export default function ModalPreview() {
           <div
             className="flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg"
             id="snackbar"
+            data-color-el="snackbar"
             // eslint-disable-next-line react/forbid-dom-props
             style={{ backgroundColor: getColor('snackbar', t3, 'background', 'default'), color: getColor('snackbar', t3, 'text', 'default') }}
           >
             <span className="text-sm">저장이 완료되었습니다</span>
             <button
+              data-color-el="snackbar-cancel"
               type="button"
               className="text-sm font-semibold border-0 cursor-pointer bg-transparent underline"
               // eslint-disable-next-line react/forbid-dom-props
@@ -166,6 +174,7 @@ export default function ModalPreview() {
               <span className="text-sm text-[#333]">{label}</span>
               <div
                 id={`dropdown-${label}`}
+                data-color-el={`dropdown-${label}`}
                 className="ml-auto w-2 h-2 rounded-full"
                 // eslint-disable-next-line react/forbid-dom-props
                 style={{ backgroundColor: getColor(`dropdown-${label}`, v, 'background', 'default') }}

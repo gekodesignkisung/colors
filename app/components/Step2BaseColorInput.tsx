@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useColorStore, ProjectData } from '@/store/colorStore';
 import KeyColorEditPopup from '@/app/components/KeyColorEditPopup';
 import ColorPicker from '@/app/components/ColorPicker';
+import OklchPicker from '@/app/components/OklchPicker';
 import { ColorShape } from '@/app/components/ColorShape';
 import { hexToOKLCH } from '@/lib/colorUtils';
 import { buildFormulaString } from '@/lib/generateTokens';
@@ -15,7 +16,7 @@ import { OpGenSettings } from '@/types/tokens';
 /** ... same helper functions ... */
 function toOklchLabel(hex: string): string {
   const { l, c, h } = hexToOKLCH(hex);
-  return `oklch(${l.toFixed(2)} ${c.toFixed(3)} ${Math.round(h)}°)`;
+  return `${(l * 100).toFixed(1)}% ${c.toFixed(3)} ${h.toFixed(1)}°`;
 }
 
 function getAutoModeDisplay(
@@ -166,118 +167,147 @@ export default function Step2BaseColorInput({ introStep, onNext }: BaseColorInpu
             {groupOrder.map((key, idx) => {
               const label = groupLabels[key] ?? key;
               const raw = baseColors[key] ?? '#000000';
-              const valueDisplay = globalGenerationMode === 'auto'
+              const colorValue = useOklch ? toOklchLabel(raw) : raw.toUpperCase();
+              const formulaDisplay = globalGenerationMode === 'auto'
                 ? getAutoModeDisplay(key, keyGenSettings, groupLabels)
-                : (useOklch ? toOklchLabel(raw) : raw.toUpperCase());
+                : null;
               const enabled = groupEnabled[key] ?? true;
 
               return (
                 <div
                   key={key}
-                  className={
-                    `flex items_center justify-between h-[100px] px-6 border-b border-[#f0f0f0] ${enabled ? 'cursor-pointer' : ''}`
-                  }
-                  onClick={e => {
-                    if (!enabled) return;
-                    setSelectedKey(key);
-                    setEditPopupPos({ x: e.clientX, y: e.clientY });
-                  }}
+                  className="flex items-center justify-between h-[100px] px-6 border-b border-[#f0f0f0]"
                 >
-                  <div className={
-                    `flex items-center gap-4 ${!enabled ? 'opacity-50' : ''}`
-                  }>
+                  <div className={`flex items-center gap-4 flex-1 min-w-0 transition-opacity duration-300 ${!enabled ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                     <button
                       type="button"
                       className="shrink-0"
-                      onClick={e => { e.stopPropagation(); setPickerKey(key); setPickerPos({ x: e.clientX, y: e.clientY }); }}
+                      onClick={e => { setPickerKey(key); setPickerPos({ x: e.clientX, y: e.clientY }); }}
                       title="Click to pick color"
                     >
-                      <div className="w-[200px] h-[60px] py-[10px] rounded-full transition-colors duration-200" style={{ backgroundColor: raw }}></div>
+                      <div className={`w-[200px] h-[60px] rounded-full transition-all duration-300 ${!enabled ? 'opacity-0' : ''}`} style={{ backgroundColor: raw }}></div>
                     </button>
                     <div className="flex flex-col text-left pl-[20px]">
                       <span className="text-[16px] font-semibold text-[#333]">{label}</span>
-                      <span className="text-[13px] text-[#888]">{valueDisplay}</span>
+                      {enabled && (
+                        <div className="flex items-center gap-3">
+                          <span className="text-[13px] text-[#888]">{colorValue}</span>
+                          {formulaDisplay && (
+                            <span className="text-[13px] text-[#888]">{formulaDisplay}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  { (key === 'secondary' || key === 'tertiary') && (
+                  <div className="flex items-center gap-9 shrink-0">
                     <button
                       type="button"
-                      onClick={e => { e.stopPropagation(); setGroupEnabled(key, !enabled); }}
-                      className="flex-shrink-0 cursor-pointer transition-opacity duration-200"
+                      onClick={e => { setSelectedKey(key); setEditPopupPos({ x: e.clientX, y: e.clientY }); }}
+                      className={`flex items-center justify-center w-[30px] h-[30px] transition-transform hover:scale-[1.2] transition-opacity duration-300 ${(key === 'secondary' || key === 'tertiary') && !enabled ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
+                      title="Color settings"
                     >
                       <img
-                        className="transition-opacity duration-200"
-                        src={enabled ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-                        alt=""
-                        width={24}
-                        height={24}
-                        aria-hidden="true"
+                        src={globalGenerationMode === 'auto' ? '/icon-settings.svg' : '/icon-setting.svg'}
+                        alt="settings"
+                        width={30}
+                        height={30}
                       />
                     </button>
-                  )}
+                    {(key === 'secondary' || key === 'tertiary') ? (
+                      <button
+                        type="button"
+                        onClick={() => { setGroupEnabled(key, !enabled); }}
+                        className="flex items-center justify-center cursor-pointer border-0 bg-transparent"
+                        style={{ width: 48, height: 48, margin: -8 }}
+                      >
+                        <div className="relative w-5 h-8 shrink-0">
+                          <img src="/icon-switch2-on.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 transition-opacity duration-300 ${enabled ? 'opacity-100' : 'opacity-0'}`} />
+                          <img src="/icon-switch2-off.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${enabled ? 'opacity-0' : 'opacity-100'}`} />
+                        </div>
+                      </button>
+                    ) : (
+                      <div style={{ width: 32 }} />
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
 
           {/* bottom generate and toggles row */}
-          <div className="flex items-center gap-8 p-6">
+          <div className="flex items-center gap-[40px] pl-5 py-5">
             {globalGenerationMode === 'auto' ? (
               <button
                 type="button"
                 onClick={randomizeColors}
-                className="w-[200px] h-[60px] bg-white border border-[#e1e1e1] rounded-[30px] shadow-[0px_3px_6px_rgba(0,0,0,0.1)] flex items-center justify-center gap-3"
+                className="w-[200px] h-[60px] bg-white border border-[#999] rounded-[50px] shadow-[0px_3px_10px_rgba(0,0,0,0.1)] flex items-center justify-center gap-[10px] shrink-0"
               >
-                <img src="/icon-generate.svg" alt="" width={28} height={28} />
-                <span className="font-semibold text-base" style={{ letterSpacing: '0.5px' }}>Generate</span>
+                <img src="/icon-generate.svg" alt="" width={22} height={22} />
+                <span className="font-semibold text-[16px] text-[#333]">Generate</span>
               </button>
             ) : (
-              <div className="w-[200px] h-[60px]"></div>
+              <div className="w-[200px] h-[60px] shrink-0"></div>
             )}
-            <button
-              type="button"
-              onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
-              className="flex items-center gap-2"
-            >
-              <img
-                src={globalGenerationMode === 'auto' ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-                alt=""
-                width={24}
-                height={24}
-              />
-              <div className="flex flex-col text-left">
-                <span className="text-[14px] font-semibold text-[#333]">Auto Generation</span>
-                <span className="text-[11px] text-[#999]">Generate all key colors automatically</span>
-              </div>
-            </button>
-            <button type="button" onClick={toggleOklch} className="flex items-center gap-2">
-              <img
-                src={useOklch ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-                alt=""
-                width={24}
-                height={24}
-              />
-              <div className="flex flex-col text-left">
-                <span className="text-[14px] font-semibold text-[#333]">OKLCH Color Space</span>
-                <span className="text-[12px] text-[#888]">Perceptually uniform color space</span>
-              </div>
-            </button>
+            <div className="flex items-center gap-[15px]">
+              {/* Auto Generation card */}
+              <button
+                type="button"
+                onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
+                className="w-[255px] h-[60px] bg-[#f5f5f5] rounded-[10px] flex items-center justify-between px-[15px] p-0 border-0 shrink-0"
+              >
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-[14px] font-semibold text-[#333] whitespace-nowrap">Auto Generation</span>
+                  <span className="text-[11px] text-[#999] whitespace-nowrap">Generate all key colors automatically</span>
+                </div>
+                <div className="relative w-5 h-8 shrink-0">
+                  <img src="/icon-switch2-on.svg" alt="" width={20} height={32} className={`block w-5 h-8 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-100' : 'opacity-0'}`} />
+                  <img src="/icon-switch2-off.svg" alt="" width={20} height={32} className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-0' : 'opacity-100'}`} />
+                </div>
+              </button>
+              {/* OKLCH card */}
+              <button
+                type="button"
+                onClick={toggleOklch}
+                className="w-[255px] h-[60px] bg-[#f5f5f5] rounded-[10px] flex items-center justify-between px-[15px] p-0 border-0 shrink-0"
+              >
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-[14px] font-semibold text-[#333] whitespace-nowrap">OKLCH Color Space</span>
+                  <span className="text-[11px] text-[#999] whitespace-nowrap">Perceptually uniform color space</span>
+                </div>
+                <div className="relative w-5 h-8 shrink-0">
+                  <img src="/icon-switch2-on.svg" alt="" width={20} height={32} className={`block w-5 h-8 transition-opacity duration-300 ${useOklch ? 'opacity-100' : 'opacity-0'}`} />
+                  <img src="/icon-switch2-off.svg" alt="" width={20} height={32} className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${useOklch ? 'opacity-0' : 'opacity-100'}`} />
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Direct color picker (swatch click) */}
       {pickerKey && (
-        <div className="fixed inset-0 z-50">
-          <ColorPicker
-            color={baseColors[pickerKey] ?? '#000000'}
-            anchorPos={pickerPos ?? undefined}
-            onChange={hex => setBaseColor(pickerKey, hex)}
-            onClose={savedHex => {
-              if (savedHex) setBaseColor(pickerKey, savedHex);
-              setPickerKey(null);
-            }}
-          />
+        <div className="fixed inset-0 z-50 bg-black/30">
+          {useOklch ? (
+            <OklchPicker
+              color={baseColors[pickerKey] ?? '#000000'}
+              anchorPos={pickerPos ?? undefined}
+              onChange={hex => setBaseColor(pickerKey, hex)}
+              onClose={savedHex => {
+                if (savedHex) setBaseColor(pickerKey, savedHex);
+                setPickerKey(null);
+              }}
+            />
+          ) : (
+            <ColorPicker
+              color={baseColors[pickerKey] ?? '#000000'}
+              anchorPos={pickerPos ?? undefined}
+              onChange={hex => setBaseColor(pickerKey, hex)}
+              onClose={savedHex => {
+                if (savedHex) setBaseColor(pickerKey, savedHex);
+                setPickerKey(null);
+              }}
+            />
+          )}
         </div>
       )}
 

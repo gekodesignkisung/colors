@@ -21,18 +21,21 @@ interface ColorShapeProps {
   borderColor?: string;
   /** border width in px (defaults to 1) */
   borderWidth?: number;
+  /** border radius override (defaults to '50%') */
+  radius?: number | string;
 }
 
-export function ColorShape({ color, size = 24, className, borderColor, borderWidth = 1 }: ColorShapeProps) {
+export function ColorShape({ color, size = 24, className, borderColor, borderWidth = 1, radius = '50%' }: ColorShapeProps) {
   const autoBorder = !borderColor && isBrighterThanThreshold(color) ? '#cccccc' : undefined;
   const resolvedBorder = borderColor ?? autoBorder;
 
   return (
     <div
-      className={`rounded-full shrink-0 ${className ?? ''}`}
+      className={`shrink-0 ${className ?? ''}`}
       style={{
         width: size,
         height: size,
+        borderRadius: radius,
         backgroundColor: color,
         border: resolvedBorder ? `${borderWidth}px solid ${resolvedBorder}` : undefined,
         boxSizing: 'border-box',

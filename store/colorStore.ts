@@ -111,6 +111,7 @@ interface ColorStore {
   customTokens: DesignToken[];
   isDark: boolean;
   selectedTokenId: string | null;
+  selectedTokenPos: { x: number; y: number } | null;
   activePreviewTab: PreviewTab;
   groupOrder: string[];
   groupLabels: Record<string, string>;
@@ -157,7 +158,7 @@ interface ColorStore {
   updateToken: (id: string, patch: Partial<Pick<DesignToken, 'name' | 'color' | 'isManual' | 'isFormulaOverride' | 'rule'>>) => void;
   resetToken: (id: string) => void;
   toggleDark: () => void;
-  setSelectedToken: (id: string | null) => void;
+  setSelectedToken: (id: string | null, pos?: { x: number; y: number }) => void;
   setActivePreviewTab: (tab: PreviewTab) => void;
   exportCSS: () => string;
   exportJSON: () => Record<string, string>;
@@ -268,6 +269,7 @@ export const useColorStore = create<ColorStore>()(
   defaultTokenFormulaMode: 'formula',
   defaultTokenFormula: { operation: 'setLightness', source: 'primary', param: 50 },
   selectedTokenId: null,
+  selectedTokenPos: null,
   activePreviewTab: 'home',
   groupOrder: DEFAULT_GROUP_ORDER,
   groupLabels: { ...DEFAULT_GROUP_LABELS },
@@ -409,7 +411,7 @@ export const useColorStore = create<ColorStore>()(
     set({ isDark, tokens: mergeCustomTokens(tokens, get().customTokens) });
   },
 
-  setSelectedToken: (id) => set({ selectedTokenId: id }),
+  setSelectedToken: (id, pos) => set({ selectedTokenId: id, selectedTokenPos: pos ?? null }),
   setActivePreviewTab: (tab) => set({ activePreviewTab: tab }),
 
   exportCSS: () => tokensToCSS(get().tokens),

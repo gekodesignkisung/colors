@@ -19,7 +19,7 @@ export default function Step1CreateProject({ onPrev, onNext }: Props) {
       {/* Main Content Container */}
       <div className="flex flex-col w-[1080px] max-w-full">
         {/* Header Row */}
-        <div className="flex w-full items-center justify-between pb-2">
+        <div className="flex w-full items-baseline justify-between pb-2">
           <h1
             className="text-[#333]"
             style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 24, lineHeight: '29.05px' }}

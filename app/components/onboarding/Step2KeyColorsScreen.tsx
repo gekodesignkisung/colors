@@ -9,7 +9,7 @@ export default function Step2KeyColorsScreen({ onPrev, onNext }: Props) {
   return (
     <div className="flex w-full flex-col overflow-hidden bg-white items-center pt-[80px]">
       <div className="flex flex-col w-[1080px] max-w-full">
-        <div className="flex w-full items-center justify-between pb-2">
+        <div className="flex w-full items-baseline justify-between pb-2">
           <h1
             className="text-[#333]"
             style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 24, lineHeight: '29.05px' }}
@@ -30,7 +30,7 @@ export default function Step2KeyColorsScreen({ onPrev, onNext }: Props) {
         </div>
       </div>
 
-      <div className="flex w-[1080px] max-w-full flex-1 min-h-0 items-stretch pt-6 pb-6">
+      <div className="flex w-[1080px] max-w-full flex-1 min-h-0 items-stretch pt-[54px] pb-[54px]">
         <div className="grid w-full grid-cols-12 gap-6 min-h-0">
 
 

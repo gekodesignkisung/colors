@@ -3,17 +3,47 @@
 import { DesignToken } from '@/types/tokens';
 import { useColorStore } from '@/store/colorStore';
 import { ColorShape } from '@/app/components/ColorShape';
-import { hexToOKLCH } from '@/lib/colorUtils';
 
-function toOklchLabel(hex: string): string {
-  const { l, c, h } = hexToOKLCH(hex);
-  return `oklch(${l.toFixed(2)} ${c.toFixed(3)} ${Math.round(h)}°)`;
+function toFormulaLabel(token: DesignToken): string {
+  const { rule } = token;
+
+  if (rule.operation === 'manual' || rule.operation === 'fixed') return 'manual';
+
+  // Naming-based token: show derivation chain
+  if (rule.namingVariant) {
+    const variant = rule.namingVariant;
+    const type    = rule.namingType    ?? '';
+    const state   = rule.namingState   ?? 'default';
+
+    const stateStr =
+      state === 'hover'    ? ` +${rule.stateAmount ?? 8}%` :
+      state === 'pressed'  ? ` −${rule.stateAmount ?? 10}%` :
+      state === 'disabled' ? ' disabled' : '';
+
+    const typeStr =
+      type === 'text' || type === 'icon' ? 'contrast' :
+      type === 'border' || type === 'outline' ? 'muted' :
+      'source';
+
+    return `${variant}${stateStr} → ${typeStr}`;
+  }
+
+  // Operation-based token
+  const op = rule.operation;
+  const src = rule.source ?? '';
+  if (op === 'source')   return src;
+  if (op === 'lighten')  return `${src} +${rule.param ?? ''}%`;
+  if (op === 'darken')   return `${src} −${rule.param ?? ''}%`;
+  if (op === 'contrast') return `contrast(${src})`;
+  if (op === 'grayscale') return `grayscale(${src})`;
+  if (op === 'invert')   return `invert(${src})`;
+  return op;
 }
 
 export default function TokenCard({ token }: { token: DesignToken }) {
-  const { selectedTokenId, setSelectedToken, useOklch, previewAssignments } = useColorStore();
+  const { selectedTokenId, setSelectedToken, previewAssignments } = useColorStore();
   const isSelected = selectedTokenId === token.id;
-  const colorLabel = useOklch ? toOklchLabel(token.color) : token.color.toUpperCase();
+  const formulaLabel = toFormulaLabel(token);
 
   // Count how many elements have this token assigned
   const assignmentCount = Object.values(previewAssignments).filter(id => id === token.id).length;
@@ -21,8 +51,8 @@ export default function TokenCard({ token }: { token: DesignToken }) {
   return (
     <button
       type="button"
-      onClick={() => setSelectedToken(isSelected ? null : token.id)}
-      className={`w-full flex items-center text-left h-[46px] px-5 transition-colors
+      onClick={(e) => setSelectedToken(isSelected ? null : token.id, isSelected ? undefined : { x: e.clientX, y: e.clientY })}
+      className={`w-full flex items-center text-left h-[56px] px-5 transition-colors
         ${isSelected ? 'bg-[#f0eeff] outline outline-2 outline-[#8b6fe8] -outline-offset-2' : 'bg-white hover:bg-gray-50'}
       `}
     >
@@ -52,8 +82,8 @@ export default function TokenCard({ token }: { token: DesignToken }) {
             </span>
           )}
         </div>
-        <span className={`font-mono truncate text-[11px] leading-[14px] ${useOklch ? 'text-[#a78bfa]' : 'text-[#999999]'}`}>
-          {colorLabel}
+        <span className="font-mono font-medium truncate text-[11px] leading-[14px] text-[#999999]">
+          {formulaLabel}
         </span>
       </div>
     </button>

@@ -52,9 +52,21 @@ function getNamingDefaultFormula(
   return { op: 'source', param: 0 };
 }
 
+const POPUP_W = 820;
+const POPUP_H = 520;
+const MARGIN  = 12;
+
+function computePos(anchor: { x: number; y: number }) {
+  let left = anchor.x + MARGIN;
+  let top  = anchor.y + MARGIN;
+  if (left + POPUP_W > window.innerWidth  - MARGIN) left = anchor.x - POPUP_W - MARGIN;
+  if (top  + POPUP_H > window.innerHeight - MARGIN) top  = anchor.y - POPUP_H - MARGIN;
+  return { left: Math.max(MARGIN, left), top: Math.max(MARGIN, top) };
+}
+
 export default function TokenEditPopup() {
   const {
-    tokens, selectedTokenId, setSelectedToken, updateToken, resetToken,
+    tokens, selectedTokenId, selectedTokenPos, setSelectedToken, updateToken, resetToken,
     baseColors, isDark, groupOrder, groupLabels, useOklch, setDefaultTokenFormula,
   } = useColorStore();
 
@@ -228,11 +240,15 @@ export default function TokenEditPopup() {
     setShowToast(true);
   };
 
+  const pos = selectedTokenPos ? computePos(selectedTokenPos) : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+    <div className="fixed inset-0 z-50 bg-black/30" onClick={() => setSelectedToken(null)}>
       <div
         ref={popupRef}
+        onClick={e => e.stopPropagation()}
         className="bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[820px] flex flex-col overflow-hidden relative"
+        style={pos ? { position: 'fixed', left: pos.left, top: pos.top } : { position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between h-[80px] px-6 shrink-0 border-b border-[#f0f0f0]">
@@ -258,7 +274,7 @@ export default function TokenEditPopup() {
           {/* Col 1: Swatch */}
           <div className="bg-white flex flex-col items-center w-[168px] shrink-0 p-6 gap-3">
             <div className="w-[120px] h-[120px]">
-              <ColorShape color={previewColor} size={120} />
+              <ColorShape color={previewColor} size={120} radius={8} />
             </div>
             <div className="flex flex-col items-center gap-0.5 w-full">
               {useOklch ? (() => {
@@ -267,7 +283,7 @@ export default function TokenEditPopup() {
                   <>
                     <span className="text-[10px] font-medium text-[#aaa] uppercase tracking-wider">OKLCH</span>
                     <span className="text-[11px] font-semibold font-mono text-[#333] text-center">
-                      {Math.round(ok.l * 1000) / 10}% {Math.round(ok.c * 1000) / 1000} {Math.round(ok.h)}°
+                      {(ok.l * 100).toFixed(1)}% {ok.c.toFixed(3)} {ok.h.toFixed(1)}°
                     </span>
                   </>
                 );
@@ -291,6 +307,7 @@ export default function TokenEditPopup() {
                     <ColorShape
                       color={source === 'random' ? randomSourceColor : (effectiveBaseColors[source as keyof typeof effectiveBaseColors] ?? '#cccccc')}
                       size={12}
+                      radius={3}
                     />
                   </span>
                   <select
@@ -438,36 +455,36 @@ export default function TokenEditPopup() {
         {/* Footer */}
         <div className="flex items-center justify-between h-[80px] px-[30px] shrink-0 border-t border-[#f0f0f0]">
           <div className="flex gap-[10px]">
-            <Button
+            <button
               type="button"
               onClick={handleReset}
               className="h-9 px-[10px] bg-[#f5f5f5] text-[15px] font-semibold text-[#808088] hover:bg-[#eee]"
             >
               Reset
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
               onClick={handleSetAsDefault}
               className="h-9 px-[10px] bg-[#eef5ff] text-[15px] font-semibold text-[#7490e7] hover:bg-[#ddeaff]"
             >
               Set Default
-            </Button>
+            </button>
           </div>
           <div className="flex gap-[10px]">
-            <Button
+            <button
               type="button"
               onClick={() => setSelectedToken(null)}
               className="w-[100px] h-9 bg-[#f5f5f5] text-[15px] font-semibold text-[#808088] hover:bg-[#eee]"
             >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
               onClick={handleApply}
               className="w-[100px] h-9 bg-[#666666] text-[15px] font-semibold text-white hover:bg-[#555]"
             >
               Save
-            </Button>
+            </button>
           </div>
         </div>
 

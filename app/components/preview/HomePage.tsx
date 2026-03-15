@@ -57,28 +57,30 @@ export default function HomePage() {
       : {};
 
   if (!mounted) {
-    return <div id="page-bg" className="flex flex-col min-h-full w-full" style={{ backgroundColor: getColor('page-bg','neutral','background','default') }} />;
+    return <div id="page-bg" data-color-el="page-bg" className="flex flex-col min-h-full w-full" style={{ backgroundColor: getColor('page-bg','neutral','background','default') }} />;
   }
 
   return (
-    <div id="page-bg" className="flex flex-col min-h-full w-full" style={{ backgroundColor: getColor('page-bg','neutral','background','default') }}>
+    <div id="page-bg" data-color-el="page-bg" className="flex flex-col min-h-full w-full" style={{ backgroundColor: getColor('page-bg','neutral','background','default') }}>
       {/* Top Navigation */}
       <nav
         id="nav-bg"
+        data-color-el="nav-bg"
         className="flex items-center justify-between px-8 h-16 sticky top-0 z-50"
-        
+
         style={{ backgroundColor: getColor('nav-bg', primary, 'background', 'default'), borderBottom: `1px solid ${getColor('nav-bg', primary, 'outline', 'default')}`, ...editStyle('nav-bg') }}
       >
         <div className="flex items-center gap-2">
           <div
             id="nav-logo-bg"
+            data-color-el="nav-logo-bg"
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-            
+
             style={{ backgroundColor: getColor('nav-logo-bg', secondary, 'background', 'default'), color: getColor('nav-logo-bg', secondary, 'text', 'default'), ...editStyle('nav-logo-bg') }}
           >
             D
           </div>
-          <span id="nav-logo-text" className="font-bold text-lg" style={{ color: getColor('nav-logo-text', primary, 'text', 'default') }}>
+          <span id="nav-logo-text" data-color-el="nav-logo-text" className="font-bold text-lg" style={{ color: getColor('nav-logo-text', primary, 'text', 'default') }}>
             Design System
           </span>
         </div>
@@ -107,9 +109,10 @@ export default function HomePage() {
         {/* CTA button */}
         <button
           id="nav-cta-bg"
+          data-color-el="nav-cta-bg"
           type="button"
           className="px-6 h-10 rounded-full font-semibold text-sm transition-opacity hover:opacity-90"
-          
+
           style={{ backgroundColor: getColor('nav-cta-bg', secondary, 'background', 'default'), color: getColor('nav-cta-bg', secondary, 'text', 'default'), ...editStyle('nav-cta-bg') }}
         >
           Get Started
@@ -119,33 +122,37 @@ export default function HomePage() {
       {/* Hero Section */}
       <section
         id="hero-bg"
+        data-color-el="hero-bg"
         className="px-8 py-20 text-center"
-        
+
         style={{ backgroundColor: getColor('hero-bg', primary, 'background-dark', 'default'), ...editStyle('hero-bg') }}
       >
-        <h1 id="hero-title" className="text-5xl font-bold mb-4 max-w-2xl mx-auto" style={{ color: getColor('hero-title', primary, 'text', 'default') }}>
+        <h1 id="hero-title" data-color-el="hero-title" className="text-5xl font-bold mb-4 max-w-2xl mx-auto" style={{ color: getColor('hero-title', primary, 'text', 'default') }}>
           Beautiful Design Tokens
         </h1>
-        <p id="hero-sub" className="text-xl mb-8 mx-auto opacity-90" style={{ color: getColor('hero-sub', primary, 'text', 'default') }}>
+        <p id="hero-sub" data-color-el="hero-sub" className="text-xl mb-8 mx-auto opacity-90" style={{ color: getColor('hero-sub', primary, 'text', 'default') }}>
           Generate and manage your design system colors with a single tool
         </p>
         <button
           id="hero-cta-bg"
+          data-color-el="hero-cta-bg"
           type="button"
-          className="px-8 py-3 rounded-full font-semibold text-base transition-opacity hover:opacity-90 inline-block text-center mx-auto bg-white border-2 border-[#999] text-[#999]"
-          
+          className="px-8 py-3 rounded-full font-semibold text-base transition-opacity hover:opacity-90 inline-block text-center mx-auto border-2"
           style={{
+            backgroundColor: getColor('hero-cta-bg', secondary, 'background', 'default'),
+            color: getColor('hero-cta-bg', secondary, 'text', 'default'),
+            borderColor: getColor('hero-cta-bg', secondary, 'border', 'default'),
             ...editStyle('hero-cta-bg'),
           }}
         >
-          <span id="hero-cta-text" className="whitespace-nowrap">Explore Documentation</span>
+          <span className="whitespace-nowrap">Explore Documentation</span>
         </button>
       </section>
 
       {/* Features Section */}
-      <section id="features-bg" className="px-8 py-16" style={{ backgroundColor: getColor('features-bg','neutral','background','hover') }}>
+      <section id="features-bg" data-color-el="features-bg" className="px-8 py-16" style={{ backgroundColor: getColor('features-bg','neutral','background','hover') }}>
         <div className="max-w-6xl mx-auto">
-          <h2 id="features-heading" className="text-3xl font-bold mb-12 text-center" style={{ color: getColor('features-heading', primary, 'text', 'default') }}>
+          <h2 id="features-heading" data-color-el="features-heading" className="text-3xl font-bold mb-12 text-center" style={{ color: getColor('features-heading', primary, 'text', 'default') }}>
             Key Features
           </h2>
 
@@ -157,6 +164,7 @@ export default function HomePage() {
             ].map(({ title, desc, v }, idx) => (
               <div
                 id={`feature-card-${idx}`}
+                data-color-el={`feature-card-${idx}`}
                 key={title}
                 className="p-6 rounded-xl"
                 style={{ backgroundColor: getColor(`feature-card-${idx}`, v, 'background', 'hover'), borderColor: getColor(`feature-card-${idx}`, v, 'outline', 'default'), border: `1px solid ${getColor(`feature-card-${idx}`, v, 'outline', 'default')}`, ...editStyle(`feature-card-${idx}`) }}
@@ -184,7 +192,7 @@ export default function HomePage() {
       {/* Pricing Section */}
       <section className="px-8 py-16">
         <div className="max-w-6xl mx-auto">
-          <h2 id="pricing-heading" className="text-3xl font-bold mb-12 text-center" style={{ color: getColor('pricing-heading', primary, 'text', 'default') }}>
+          <h2 id="pricing-heading" data-color-el="pricing-heading" className="text-3xl font-bold mb-12 text-center" style={{ color: getColor('pricing-heading', primary, 'text', 'default') }}>
             Simple Pricing
           </h2>
 
@@ -195,6 +203,7 @@ export default function HomePage() {
             ].map(({ name, price, features, highlight, v }, idx) => (
               <div
                 id={`pricing-card-${idx}`}
+                data-color-el={`pricing-card-${idx}`}
                 key={name}
                 className="rounded-2xl p-8 border"
                 style={{
@@ -219,6 +228,7 @@ export default function HomePage() {
                 </ul>
                 <button
                   id={`pricing-btn-${idx}`}
+                  data-color-el={`pricing-btn-${idx}`}
                   type="button"
                   className="w-full py-2 rounded-lg font-semibold transition-opacity hover:opacity-90"
 
@@ -239,21 +249,23 @@ export default function HomePage() {
       {/* CTA Section */}
       <section
         id="cta-bg"
+        data-color-el="cta-bg"
         className="px-8 py-20 text-center rounded-2xl mx-8 my-16"
-        
+
         style={{ backgroundColor: getColor('cta-bg', primary, 'background', 'default'), ...editStyle('cta-bg') }}
       >
-        <h2 id="cta-heading" className="text-3xl font-bold mb-4" style={{ color: getColor('cta-heading', primary, 'text', 'default') }}>
+        <h2 id="cta-heading" data-color-el="cta-heading" className="text-3xl font-bold mb-4" style={{ color: getColor('cta-heading', primary, 'text', 'default') }}>
           Ready to get started?
         </h2>
-        <p id="cta-sub" className="text-lg mb-8" style={{ color: getColor('cta-sub', primary, 'text', 'hover') }}>
+        <p id="cta-sub" data-color-el="cta-sub" className="text-lg mb-8" style={{ color: getColor('cta-sub', primary, 'text', 'hover') }}>
           Create your design system today with our easy-to-use token generator
         </p>
         <button
           id="cta-button"
+          data-color-el="cta-button"
           type="button"
           className="px-8 py-3 rounded-lg font-semibold text-base transition-opacity hover:opacity-90"
-          style={{ backgroundColor: getColor('cta-button', secondary, 'background', 'default'), color: getColor('cta-button', secondary, 'text', 'default') }}
+          style={{ backgroundColor: getColor('cta-button', secondary, 'background', 'default'), color: getColor('cta-button', secondary, 'text', 'default'), ...editStyle('cta-button') }}
         >
           <span id="cta-button-text">Start Free Trial</span>
         </button>
@@ -262,8 +274,9 @@ export default function HomePage() {
       {/* Footer */}
       <footer
         id="footer-bg"
+        data-color-el="footer-bg"
         className="px-8 py-12"
-        
+
         style={{ backgroundColor: getColor('footer-bg', 'neutral', 'background', 'hover'), borderTop: `1px solid ${getColor('footer-bg','neutral','outline','default')}`, ...editStyle('footer-bg') }}
       >
         <div className="max-w-6xl mx-auto">
@@ -275,13 +288,14 @@ export default function HomePage() {
               { title: 'Legal', items: ['Privacy', 'Terms', 'License', 'Cookies'] },
             ].map(({ title, items }) => (
               <div key={title}>
-                <h4 className="font-semibold mb-4" style={{ color: getColor('footer-head', 'neutral', 'text', 'default') }}>
+                <h4 data-color-el="footer-head" className="font-semibold mb-4" style={{ color: getColor('footer-head', 'neutral', 'text', 'default') }}>
                   {title}
                 </h4>
                 <ul className="space-y-2">
                   {items.map(item => (
                     <li key={item}>
                       <button
+                        data-color-el="footer-link"
                         type="button"
                         className="text-sm opacity-70 hover:opacity-100 transition-opacity"
                         style={{ color: getColor('footer-link', 'neutral', 'text', 'default') }}
@@ -298,16 +312,17 @@ export default function HomePage() {
           <div className="pt-8 flex items-center justify-between" style={{ borderTop: `1px solid ${getColor('footer-head','neutral','outline','default')}` }}>
             <div className="flex items-center gap-2">
               <div
+                data-color-el="footer-logo"
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
                 style={{ backgroundColor: getColor('footer-logo','neutral', 'background', 'default'), color: getColor('footer-logo','neutral', 'text', 'default') }}
               >
                 D
               </div>
-              <span className="font-semibold" style={{ color: getColor('footer-text','neutral', 'text', 'default') }}>
+              <span data-color-el="footer-text" className="font-semibold" style={{ color: getColor('footer-text','neutral', 'text', 'default') }}>
                 Design System
               </span>
             </div>
-            <p className="text-sm opacity-50" style={{ color: getColor('footer-copy','neutral', 'text', 'default') }}>
+            <p data-color-el="footer-copy" className="text-sm opacity-50" style={{ color: getColor('footer-copy','neutral', 'text', 'default') }}>
               © 2026 Design System. All rights reserved.
             </p>
           </div>

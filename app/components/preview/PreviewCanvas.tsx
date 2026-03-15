@@ -37,82 +37,33 @@ function PreviewCanvasInner() {
   useEffect(() => {
     if (!isEditMode || !previewRef.current) return;
 
-    const assignIds = (root: HTMLElement) => {
-      const nodes = Array.from(root.querySelectorAll<HTMLElement>('*'));
-      nodes.forEach(el => {
-        if (!el.id) {
-          // if element has non-whitespace text and is not purely structural,
-          // give it an id so it can be targeted independently.
-          if (el.textContent && el.textContent.trim()) {
-            el.id = `preview-auto-${autoIdRef.current++}`;
-          }
-        }
-      });
-    };
-
-    assignIds(previewRef.current);
-
     const handleClick = (e: MouseEvent) => {
-      // we no longer bail out just because there happens to be a text selection
-      // (clicking on a word used to create a small selection, which prevented
-      // the panel from opening). instead we let the event through and then
-      // clear any selection after capturing the element id below.
+      e.stopPropagation();
 
-      let target = e.target as Node;
+      let target = e.target as HTMLElement | null;
+      if (!target) return;
 
-      // If target is a text node, wrap it in a span so it can receive its own id
-      if (target.nodeType === Node.TEXT_NODE) {
-        const textNode = target as Text;
-        const parent = textNode.parentNode as HTMLElement | null;
-        if (parent) {
-          // create a span around the text node unless already wrapped
-          if (parent.nodeName !== 'SPAN' || !parent.hasAttribute('data-preview-text')) {
-            const span = document.createElement('span');
-            span.setAttribute('data-preview-text', '');
-            parent.replaceChild(span, textNode);
-            span.appendChild(textNode);
-            target = span; // continue with this new span
-          } else {
-            target = parent;
-          }
-        }
+      // If a text node was clicked, use its parent element
+      if ((target as unknown as Node).nodeType === Node.TEXT_NODE) {
+        target = (target as unknown as Text).parentElement;
       }
+      if (!target) return;
 
-      // find closest ancestor with an explicit id
-      let element = (target as HTMLElement)?.closest('[id]') as HTMLElement | null;
-      let elementId: string | null = null;
-
-      if (element) {
-        elementId = element.getAttribute('id');
-      } else {
-        // no id anywhere in the ancestors; use the clicked element itself and
-        // give it a generated id so it becomes selectable on future hovers
-        const el = target as HTMLElement;
-        if (el && el.nodeType === Node.ELEMENT_NODE) {
-          if (!el.id) {
-            el.id = `preview-auto-${autoIdRef.current++}`;
-          }
-          elementId = el.id;
-        }
-      }
+      // Find nearest ancestor (or self) with data-color-el attribute
+      // This is the only reliable way to find color-assignable elements
+      const colorEl = target.closest('[data-color-el]') as HTMLElement | null;
+      const elementId = colorEl?.getAttribute('data-color-el') ?? null;
 
       if (elementId) {
         setSelectedElementId(elementId);
         setPanelAnchor({ x: e.clientX, y: e.clientY });
-
-        // remove any accidental text selection so subsequent clicks aren't
-        // ignored by the old guard clause logic or user expectations
-        const sel = window.getSelection();
-        if (sel) sel.removeAllRanges();
+        window.getSelection()?.removeAllRanges();
       }
     };
 
     const preview = previewRef.current;
-    preview.addEventListener('click', handleClick, true); // Use capture phase
-
-    return () => {
-      preview.removeEventListener('click', handleClick, true);
-    };
+    preview.addEventListener('click', handleClick, true);
+    return () => preview.removeEventListener('click', handleClick, true);
   }, [isEditMode, setSelectedElementId, setPanelAnchor]);
 
   const downloadCSS = () => {

@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useColorStore, DEFAULT_NAMING_NAMESPACE, DEFAULT_NAMING_VALUES } from '@/store/colorStore';
+import { useState } from 'react';
+import { useColorStore } from '@/store/colorStore';
+import { DndContext, closestCenter, DragEndEvent, useSensor, useSensors, MouseSensor, TouchSensor } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import SectionEditPopup, { PanelSectionKey } from '@/app/components/onboarding/SectionEditPopup';
 
+type SectionKey = PanelSectionKey;
 
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-type SectionKey =
-  | 'namespace' | 'theme' | 'category' | 'component'
-  | 'type' | 'variant' | 'state';
-
-// ─── Config ───────────────────────────────────────────────────────────────────
 const SECTIONS: { key: SectionKey; label: string; desc: string; isSingle?: boolean }[] = [
-  { key: 'namespace', label: 'Namespace', desc: '전체 토큰을 구분하는 최상위 식별자',              isSingle: true },
+  { key: 'namespace', label: 'Namespace', desc: '전체 토큰을 구분하는 최상위 식별자', isSingle: true },
   { key: 'theme',     label: 'Theme',     desc: 'CSS scope로 처리 (토큰명에 포함 안 됨)' },
   { key: 'category',  label: 'Category',  desc: '토큰의 속성 유형 (color, typography..)' },
   { key: 'variant',   label: 'Variant',   desc: '색상 역할' },
@@ -21,161 +19,120 @@ const SECTIONS: { key: SectionKey; label: string; desc: string; isSingle?: boole
   { key: 'component', label: 'Component', desc: '2단계 alias 레이어에 적용' },
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
 interface NamingPanelProps {
   showNext?: boolean;
   onNext?: () => void;
   scroll?: boolean;
 }
 
+interface SortableCardProps {
+  sec: (typeof SECTIONS)[number];
+  isOn: boolean;
+  tags: string[];
+  onToggle: () => void;
+  onEdit: (e: React.MouseEvent) => void;
+}
+
+function SortableCard({ sec, isOn, tags, onToggle, onEdit }: SortableCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sec.key });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="pt-[8px] px-5 pb-[2px] bg-white cursor-grab active:cursor-grabbing transition-all flex flex-col border-b border-[#dddddf]"
+      {...attributes}
+      {...listeners}
+    >
+      {/* Header: Label + Toggle */}
+      <div className="flex items-center justify-between mb-[-6px]">
+        <h3 className={`font-bold text-[15px] text-[#333] transition-opacity ${!isOn ? 'opacity-30' : ''}`}>{sec.label}</h3>
+        <button
+          type="button"
+          onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
+          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={e => { e.stopPropagation(); onToggle(); }}
+          className="flex items-center justify-center translate-y-[10px]"
+          aria-label={isOn ? 'Disable' : 'Enable'}
+        >
+          <div className="relative w-5 h-8 shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-switch2-on.svg"  alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 transition-opacity duration-300 ${isOn ? 'opacity-100' : 'opacity-0'}`} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-switch2-off.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${isOn ? 'opacity-0' : 'opacity-100'}`} />
+          </div>
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className={`flex flex-col flex-1 transition-opacity ${!isOn ? 'opacity-30' : ''}`}>
+        <p className="text-[12px] text-[#999] mb-[14px] leading-relaxed">{sec.desc}</p>
+
+        {/* Tags — click to edit */}
+        <button
+          type="button"
+          onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
+          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
+          onClick={e => { e.stopPropagation(); onEdit(e); }}
+          title="Edit Token"
+          className="flex flex-wrap gap-[6px] pb-[18px] text-left cursor-pointer"
+        >
+          {tags.map(tag => (
+            <span key={tag} className="inline-flex items-center px-3 h-[28px] bg-[#333] text-[12px] font-medium text-[#fff] rounded-[8px]">
+              {tag}
+            </span>
+          ))}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function NamingPanel({ showNext, onNext, scroll = true }: NamingPanelProps) {
-  // ── Store state ──
-  const namingNamespace = useColorStore(s => s.namingNamespace);
-  const namingOrder     = useColorStore(s => s.namingOrder);
-  const namingEnabled   = useColorStore(s => s.namingEnabled);
-  const namingValues    = useColorStore(s => s.namingValues);
-  const namingDescriptions = useColorStore(s => s.namingDescriptions);
-
-  const defaultNamingNamespace = useColorStore(s => s.defaultNamingNamespace);
-  const defaultNamingValues    = useColorStore(s => s.defaultNamingValues);
-  const defaultNamingDescriptions = useColorStore(s => s.defaultNamingDescriptions);
-
-  const setNamingNamespace = useColorStore(s => s.setNamingNamespace);
+  const namingNamespace    = useColorStore(s => s.namingNamespace);
+  const namingOrder        = useColorStore(s => s.namingOrder);
+  const namingEnabled      = useColorStore(s => s.namingEnabled);
+  const namingValues       = useColorStore(s => s.namingValues);
   const setNamingOrder     = useColorStore(s => s.setNamingOrder);
   const setNamingEnabled   = useColorStore(s => s.setNamingEnabled);
-  const setNamingValue     = useColorStore(s => s.setNamingValue);
-  const setNamingDescription = useColorStore(s => s.setNamingDescription);
 
-  const setDefaultNamingNamespace = useColorStore(s => s.setDefaultNamingNamespace);
-  const setDefaultNamingValues    = useColorStore(s => s.setDefaultNamingValues);
-  const setDefaultNamingDescriptions = useColorStore(s => s.setDefaultNamingDescriptions);
+  const [editingKey, setEditingKey] = useState<SectionKey | null>(null);
+  const [editingPos, setEditingPos] = useState<{ x: number; y: number } | null>(null);
 
-  // ── Local UI state ──
-  const [expandedKey, setExpandedKey] = useState<SectionKey | null>(null);
-  const [localEdit,   setLocalEdit]   = useState<Record<string, string | string[]>>({});
-  const [localDesc,   setLocalDesc]   = useState<Record<string, string>>({});
-  const [inputVal,    setInputVal]    = useState('');
-  const [showToast,   setShowToast]   = useState(false);
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 1 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 1 } }),
+  );
 
-  useEffect(() => {
-    if (showToast) {
-      const timer = setTimeout(() => setShowToast(false), 2500);
-      return () => clearTimeout(timer);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = namingOrder.indexOf(active.id as SectionKey);
+      const newIndex = namingOrder.indexOf(over.id as SectionKey);
+      setNamingOrder(arrayMove(namingOrder, oldIndex, newIndex));
     }
-  }, [showToast]);
-
-  // ── Preview token string ──
-  const previewStr = namingOrder
-    .filter(k => namingEnabled.includes(k))
-    .map(k => k === 'namespace' ? (namingNamespace || 'ns') : ((namingValues[k] ?? [])[0] ?? k))
-    .join('.');
-
-  const isChangedFromDefault = (key: SectionKey): boolean => {
-    if (key === 'namespace') {
-      const current = (localEdit.namespace as string) ?? namingNamespace;
-      return current !== defaultNamingNamespace;
-    }
-    const current = (localEdit[key] as string[]) ?? namingValues[key] ?? [];
-    const def     = defaultNamingValues[key] ?? [];
-    if (JSON.stringify(current) !== JSON.stringify(def)) return true;
-    // description
-    const curDesc = localDesc[key] ?? namingDescriptions[key] ?? '';
-    const defDesc = defaultNamingDescriptions[key] ?? '';
-    return curDesc !== defDesc;
   };
 
-  const isDirty = (key: SectionKey): boolean => {
-    if (!(key in localEdit)) return false;
-    if (key === 'namespace') return (localEdit.namespace as string) !== namingNamespace;
-    const saved   = namingValues[key] ?? [];
-    const edited  = (localEdit[key] as string[]) ?? [];
-    if (JSON.stringify(edited) !== JSON.stringify(saved)) return true;
-    // also check description dirty
-    const descSaved = namingDescriptions[key] ?? '';
-    const descEdited = localDesc[key] ?? descSaved;
-    return descEdited !== descSaved;
-  };
-
-  const openSection = (key: SectionKey) => {
-    if (expandedKey === key) {
-      if (!isDirty(key)) setExpandedKey(null); // 수정 없으면 토글 닫기 허용
-      return;
-    }
-    setExpandedKey(key);
-    const currentVal = key === 'namespace' ? namingNamespace : [...(namingValues[key] ?? [])];
-    setLocalEdit(prev => ({ ...prev, [key]: currentVal }));
-    // copy description
-    setLocalDesc(prev => ({ ...prev, [key]: namingDescriptions[key] ?? '' }));
-    setInputVal('');
-  };
-
-  const toggleEnabled = (key: SectionKey, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const toggleEnabled = (key: SectionKey) => {
     const next = new Set(namingEnabled);
     next.has(key) ? next.delete(key) : next.add(key);
     setNamingEnabled([...next]);
   };
 
-  const handleSave = (key: SectionKey) => {
-    if (key === 'namespace') {
-      setNamingNamespace((localEdit.namespace as string) ?? namingNamespace);
-    } else {
-      setNamingValue(key, (localEdit[key] as string[]) ?? namingValues[key] ?? []);
-    }
-    // update description if changed
-    const newDesc = localDesc[key];
-    if (newDesc !== undefined && newDesc !== namingDescriptions[key]) {
-      setNamingDescription(key, newDesc);
-    }
-    setExpandedKey(null);
-  };
+  const previewStr = namingOrder
+    .filter(k => namingEnabled.includes(k))
+    .map(k => k === 'namespace' ? (namingNamespace || 'ns') : ((namingValues[k] ?? [])[0] ?? k))
+    .join('.');
 
-  const handleCancel = () => setExpandedKey(null);
-
-  const handleReset = (key: SectionKey) => {
-    const defaults = useColorStore.getState();
-    if (key === 'namespace') {
-      setLocalEdit(prev => ({ ...prev, namespace: defaults.defaultNamingNamespace }));
-    } else {
-      setLocalEdit(prev => ({ ...prev, [key]: [...(defaults.defaultNamingValues[key] ?? [])] }));
-    }
-    // reset description as well
-    setLocalDesc(prev => ({ ...prev, [key]: defaults.defaultNamingDescriptions[key] ?? '' }));
-  };
-
-  const addTag = (key: SectionKey) => {
-    const raw = inputVal.trim();
-    const val = raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    if (!val) return;
-    const list = (localEdit[key] ?? namingValues[key] ?? []) as string[];
-    if (list.includes(val)) return;
-    setLocalEdit(prev => ({ ...prev, [key]: [...list, val] }));
-    setInputVal('');
-  };
-
-  const removeTag = (key: SectionKey, tag: string) => {
-    const list = (localEdit[key] ?? namingValues[key] ?? []) as string[];
-    setLocalEdit(prev => ({ ...prev, [key]: list.filter(v => v !== tag) }));
-  };
-
-  const moveOrder = (key: string, direction: 'up' | 'down', e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    console.log('moveOrder called:', { key, direction, currentOrder: namingOrder });
-    const idx = namingOrder.indexOf(key);
-    console.log('Index of', key, ':', idx);
-    if (idx === -1) return;
-
-    const newOrder = [...namingOrder];
-    if (direction === 'up' && idx > 0) {
-      [newOrder[idx], newOrder[idx - 1]] = [newOrder[idx - 1], newOrder[idx]];
-      console.log('New order after moving up:', newOrder);
-    } else if (direction === 'down' && idx < namingOrder.length - 1) {
-      [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
-      console.log('New order after moving down:', newOrder);
-    }
-    setNamingOrder(newOrder);
-  };
+  const sortedSections = [...SECTIONS].sort(
+    (a, b) => namingOrder.indexOf(a.key) - namingOrder.indexOf(b.key)
+  );
 
   return (
     <div className="relative flex flex-col h-full bg-white overflow-hidden">
@@ -183,10 +140,6 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
       {/* Header */}
       <div className="flex items-center justify-between shrink-0 h-[56px] bg-[#606070] px-[15px]">
         <span className="font-semibold text-[16px] text-white">Token Naming Rules</span>
-        <button type="button" className="flex items-center justify-center w-[30px] h-[30px] hover:opacity-70 transition-opacity">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon-add.svg" alt="" width={30} height={30} aria-hidden="true" />
-        </button>
       </div>
 
       {/* Preview row */}
@@ -195,240 +148,35 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
         <span className="text-[13px] text-[#333] font-mono truncate ml-4 text-right">{previewStr || '—'}</span>
       </div>
 
-      {/* Sections */}
+      {/* Card list */}
       <div className={`flex-1 ${scroll ? 'overflow-y-auto' : 'overflow-hidden'}`}>
-        {SECTIONS.sort((a, b) => namingOrder.indexOf(a.key) - namingOrder.indexOf(b.key)).map(sec => {
-          const isOn       = namingEnabled.includes(sec.key);
-          const isExpanded = expandedKey === sec.key;
-          const editList   = (localEdit[sec.key] ?? namingValues[sec.key] ?? []) as string[];
-
-          return (
-            <div key={sec.key} className="border-b border-[#dddddf]">
-
-              {/* Row header */}
-              <div
-                className="flex items-center gap-[10px] h-[70px] px-[15px] text-left"
-              >
-                {/* Label and description */}
-                <button
-                  type="button"
-                  onClick={() => openSection(sec.key)}
-                  title={!isExpanded ? "내용 수정하기" : undefined}
-                  className={`flex flex-1 transition-opacity transition-colors
-                    ${isOn ? '' : 'opacity-50 cursor-not-allowed'} ${isExpanded && isDirty(sec.key) ? 'cursor-default' : ''}`}
-                >
-                  <div className="flex flex-1 flex-col gap-0.5 justify-center min-w-0">
-                    <span className="font-semibold text-sm text-[#333] text-left">{sec.label}</span>
-                    <span className="text-[12px] font-medium text-[#999] text-left">{namingDescriptions[sec.key] || sec.desc}</span>
-                  </div>
-                </button>
-
-                {/* Order buttons */}
-                <div className="flex flex-col items-center gap-0 shrink-0">
-                  {namingOrder.indexOf(sec.key) > 0 && (
-                    <button
-                      type="button"
-                      onClick={(e) => moveOrder(sec.key, 'up', e)}
-                      className="flex items-center justify-center hover:bg-[#f0f0f0] transition-colors rounded-md"
-                      style={{ width: '20px', height: '20px' }}
-                      title="위로 이동"
-                      aria-label="위로 이동"
-                    >
-                      <svg width="14" height="14" fill="none" stroke="#999" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                      </svg>
-                    </button>
-                  )}
-                  {namingOrder.indexOf(sec.key) < namingOrder.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => moveOrder(sec.key, 'down', e)}
-                      className="flex items-center justify-center hover:bg-[#f0f0f0] transition-colors rounded-md"
-                      style={{ width: '20px', height: '20px' }}
-                      title="아래로 이동"
-                      aria-label="아래로 이동"
-                    >
-                      <svg width="14" height="14" fill="none" stroke="#999" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                {/* Toggle switch */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={isOn ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-                  alt=""
-                  width={20}
-                  height={32}
-                  aria-hidden="true"
-                  onClick={e => toggleEnabled(sec.key, e)}
-                  className="shrink-0 cursor-pointer"
-                />
-              </div>
-
-              {/* show existing tags/values when collapsed */}
-              {isOn && !isExpanded && (
-                <>
-                  {sec.isSingle && namingNamespace && (
-                    <div className="px-[15px] pb-[15px]">
-                      <div className="flex flex-wrap gap-[6px]">
-                        <span className="inline-flex items-center h-[26px] pl-[8px] pr-[8px] rounded-[5px] bg-white border border-[#aaa] text-[#333] text-[12px] font-medium whitespace-nowrap">
-                          {namingNamespace}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {!sec.isSingle && (namingValues[sec.key] ?? []).length > 0 && (
-                    <div className="px-[15px] pb-[15px]">
-                      <div className="flex flex-wrap gap-[6px]">
-                        {(namingValues[sec.key] ?? []).map(tag => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center h-[26px] pl-[8px] pr-[8px] rounded-[5px] bg-white border border-[#aaa] text-[#333] text-[12px] font-medium whitespace-nowrap"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Expanded content */}
-              {isExpanded && isOn && (
-                <div className="flex flex-col gap-[20px] px-[15px] pt-0 pb-[15px]">
-                  {sec.isSingle ? (
-                    <input
-                      type="text"
-                      value={(localEdit.namespace ?? namingNamespace) as string}
-                      onChange={e => setLocalEdit(prev => ({
-                        ...prev,
-                        namespace: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-                      }))}
-                      placeholder="e.g. krds"
-                      className="h-[30px] border border-[#ccc] rounded-[8px] px-3 text-[13px] font-mono text-[#333] outline-none focus:border-[#808088] placeholder-[#ccc]"
-                    />
-                  ) : (
-                    <>
-                      {/* Tags */}
-                      <div className="flex flex-wrap gap-[6px] min-h-[22px]">
-                        {editList.map(tag => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-[4px] h-[26px] pl-[8px] pr-[4px] rounded-[5px] bg-white border border-[#aaa] text-[#333] text-[12px] font-medium shrink-0"
-                          >
-                            {tag}
-                            <button
-                              type="button"
-                              onClick={() => removeTag(sec.key, tag)}
-                              className="flex items-center justify-center w-[16px] h-[16px] shrink-0"
-                              aria-label={`${tag} 제거`}
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src="/icon-del.svg" alt="" width={18} height={18} aria-hidden="true" />
-                            </button>
-                          </span>
-                        ))}
-                        {editList.length === 0 && (
-                          <span className="text-[11px] text-[#ccc] italic">값 없음</span>
-                        )}
-                      </div>
-
-                      {/* Add input */}
-                      <div className="flex items-center gap-[6px]">
-                        <input
-                          type="text"
-                          value={inputVal}
-                          onChange={e => setInputVal(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') addTag(sec.key); }}
-                          placeholder="토큰 추가..."
-                          className="flex-1 h-[30px] border border-[#ccc] rounded-[8px] px-3 text-[12px] text-[#333] outline-none focus:border-[#808088] placeholder-[#ccc]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addTag(sec.key)}
-                          className="shrink-0 w-[30px] h-[30px] flex items-center justify-center hover:opacity-70 transition-opacity"
-                          aria-label="추가"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/icon-add-item.svg" alt="" width={30} height={30} aria-hidden="true" />
-                        </button>
-                      </div>
-
-                      {/* Description input */}
-                      <div className="flex flex-col">
-                        <label className="text-[12px] font-medium text-[#333] mb-1">설명</label>
-                        <input
-                          type="text"
-                          value={localDesc[sec.key] ?? namingDescriptions[sec.key] ?? ''}
-                          onChange={e => setLocalDesc(prev => ({ ...prev, [sec.key]: e.target.value }))}
-                          placeholder="어떤 의미인지 설명"
-                          className="h-[30px] border border-[#ccc] rounded-[8px] px-3 text-[12px] text-[#333] outline-none focus:border-[#808088] placeholder-[#ccc]"
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Footer buttons */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-[8px]">
-                      <button
-                        type="button"
-                        onClick={() => handleReset(sec.key)}
-                        className="h-[30px] px-3 bg-[#f5f5f5] rounded-[8px] text-[12.5px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
-                      >
-                        Reset
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (sec.key === 'namespace') {
-                            const val = (localEdit.namespace as string) ?? namingNamespace;
-                            setNamingNamespace(val);
-                            setDefaultNamingNamespace(val);
-                          } else {
-                            const list = ((localEdit[sec.key] as string[]) ?? namingValues[sec.key] ?? []);
-                            setNamingValue(sec.key, list as string[]);
-                            setDefaultNamingValues(sec.key, list as string[]);
-                            const newDesc = localDesc[sec.key];
-                            if (newDesc !== undefined) {
-                              setNamingDescription(sec.key, newDesc);
-                              setDefaultNamingDescriptions(sec.key, newDesc);
-                            }
-                          }
-                          setExpandedKey(null);
-                          setShowToast(true);
-                        }}
-                        className="h-[30px] px-3 bg-[#eef5ff] rounded-[8px] text-[12.5px] font-medium text-[#4a70e2] hover:bg-[#ddeaff] transition-colors"
-                      >
-                        Set default
-                      </button>
-                    </div>
-                    <div className="flex gap-[8px]">
-                      <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="h-[30px] w-[70px] bg-[#f5f5f5] rounded-[8px] text-[12.5px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSave(sec.key)}
-                        className="h-[30px] w-[70px] bg-[#666] rounded-[8px] text-[12.5px] font-medium text-white hover:bg-[#555] transition-colors"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={sortedSections.map(s => s.key)} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col gap-0">
+              {sortedSections.map(sec => {
+                const isOn = namingEnabled.includes(sec.key);
+                const tags = sec.isSingle
+                  ? (namingNamespace ? [namingNamespace] : [])
+                  : (namingValues[sec.key] ?? []);
+                return (
+                  <SortableCard
+                    key={sec.key}
+                    sec={sec}
+                    isOn={isOn}
+                    tags={tags}
+                    onToggle={() => toggleEnabled(sec.key)}
+                    onEdit={(e) => { setEditingKey(sec.key); setEditingPos({ x: e.clientX, y: e.clientY }); }}
+                  />
+                );
+              })}
             </div>
-          );
-        })}
+          </SortableContext>
+        </DndContext>
+
         {showNext && onNext && (
           <div className="p-3 flex justify-center mt-[30px]">
             <button
@@ -442,14 +190,19 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
         )}
       </div>
 
-      {/* Toast notification */}
-      {showToast && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70]">
-          <div className="bg-[#333] text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
-            현재 설정이 초기값으로 저장되었습니다.
-          </div>
-        </div>
-      )}
+      {/* Section edit popup */}
+      {editingKey && (() => {
+        const sec = SECTIONS.find(s => s.key === editingKey)!;
+        return (
+          <SectionEditPopup
+            sectionKey={editingKey}
+            label={sec.label}
+            isSingle={sec.isSingle}
+            onClose={() => setEditingKey(null)}
+            anchorPos={editingPos ?? undefined}
+          />
+        );
+      })()}
     </div>
   );
 }

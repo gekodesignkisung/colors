@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useColorStore } from '@/store/colorStore';
 import { computeNamingTokenColor } from '@/lib/generateTokens';
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, DragEndEvent, useSensor, useSensors, MouseSensor, TouchSensor } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import SectionEditPopup from './SectionEditPopup';
@@ -106,6 +106,7 @@ export default function Step3GenerateTokensScreen({
   const setNamingEnabled = useColorStore(s => s.setNamingEnabled);
 
   const [editingKey, setEditingKey] = useState<PanelSectionKey | null>(null);
+  const [editingPos, setEditingPos] = useState<{ x: number; y: number } | null>(null);
 
   // Main screen effects
   useEffect(() => {
@@ -228,6 +229,11 @@ export default function Step3GenerateTokensScreen({
   };
 
   // Drag and drop handler
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 1 } }),
+    useSensor(TouchSensor, { activationConstraint: { distance: 1 } }),
+  );
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
@@ -246,12 +252,12 @@ export default function Step3GenerateTokensScreen({
   return (
     <div className="flex w-full flex-col bg-white overflow-hidden items-center pt-[80px]">
       <div className="flex flex-col w-[1080px] max-w-full h-full">
-        <div className="flex w-full items-center justify-between pb-2">
+        <div className="flex w-full items-baseline justify-between pb-2">
           <h1
             className="text-[#333]"
             style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 24, lineHeight: '29.05px' }}
           >
-            Step 3. Token Naming Rules
+            Step 3. Configuring Token Naming Rules
           </h1>
           <div className="flex items-center w-[120px] h-[50px]">
             <img src="/logo-opencolor-s.svg" alt="OpenColor" style={{ width: '100%', height: 'auto' }} />
@@ -261,23 +267,23 @@ export default function Step3GenerateTokensScreen({
         <div className="w-full h-[2px] bg-[#404050]" />
 
         <div className="pt-3 mb-6">
-          <p className="text-[#808090]" style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, lineHeight: '25.2px' }}>
+          <p className="text-[#808090]" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, lineHeight: '25.2px' }}>
             This step allows you to set the names and intentions of your color tokens and combine them. You can modify or add tokens based on key color information and various purposes or design intentions. These various settings can be changed at any time later.
           </p>
         </div>
 
-        <div className="flex w-full justify-center flex-1 min-h-0 relative">
+        <div className="flex w-full justify-center flex-1 min-h-0 relative pt-[30px] pb-[30px]">
           {/* Panel */}
           <div className="w-full max-w-[1000px] h-full flex flex-col bg-white overflow-hidden">
 
             {/* Preview row */}
-            <div className="flex items-start justify-center shrink-0 h-[60px] pt-1 border-b border-[#dddddf] px-[15px]">
+            <div className="flex items-center justify-center shrink-0 h-[60px] mx-6 px-[15px] bg-[#f5f5f5] rounded-[20px]">
               <span className="text-[20px] text-[#333] font-semibold font-mono truncate">{panelPreviewStr || '—'}</span>
             </div>
 
             {/* Card Grid */}
             <div className="flex-1 overflow-y-auto p-6">
-              <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
+              <DndContext sensors={sensors} onDragEnd={handleDragEnd} collisionDetection={closestCenter}>
                 <SortableContext items={sortedSections.map(s => s.key)} strategy={rectSortingStrategy}>
                   <div className="grid grid-cols-3 gap-4">
                     {sortedSections.map(sec => (
@@ -285,7 +291,7 @@ export default function Step3GenerateTokensScreen({
                         key={sec.key}
                         sec={sec}
                         isOn={namingEnabled.includes(sec.key)}
-                        onEdit={() => setEditingKey(sec.key)}
+                        onEdit={(e) => { setEditingKey(sec.key); setEditingPos({ x: e.clientX, y: e.clientY }); }}
                         onToggle={(e) => panelToggleEnabled(sec.key, e)}
                         namingNamespaceFromStore={namingNamespaceFromStore}
                         namingValuesFromStore={namingValuesFromStore}
@@ -330,6 +336,7 @@ export default function Step3GenerateTokensScreen({
           label={PANEL_SECTIONS.find(s => s.key === editingKey)?.label || ''}
           isSingle={PANEL_SECTIONS.find(s => s.key === editingKey)?.isSingle}
           onClose={() => setEditingKey(null)}
+          anchorPos={editingPos ?? undefined}
         />
       )}
     </div>
@@ -348,7 +355,7 @@ function SortableCard({
 }: {
   sec: (typeof PANEL_SECTIONS)[number];
   isOn: boolean;
-  onEdit: () => void;
+  onEdit: (e: React.MouseEvent) => void;
   onToggle: (e: React.MouseEvent) => void;
   namingNamespaceFromStore: string;
   namingValuesFromStore: Record<string, string[]>;
@@ -373,7 +380,7 @@ function SortableCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="border border-[#aaa] rounded-2xl pt-4 px-4 pb-0 bg-white cursor-grab active:cursor-grabbing transition-all flex flex-col min-h-[160px] shadow-[0_4px_10px_rgba(0,0,0,0.05)]"
+      className="border border-[#aaa] rounded-2xl pt-[6px] px-4 pb-0 bg-white cursor-grab active:cursor-grabbing transition-all flex flex-col min-h-[160px] shadow-[0_4px_10px_rgba(0,0,0,0.05)]"
       {...attributes}
       {...listeners}
     >
@@ -393,7 +400,7 @@ function SortableCard({
             e.stopPropagation();
             onToggle(e);
           }}
-          className="flex items-center justify-center"
+          className="flex items-center justify-center translate-y-[10px]"
           aria-label={isOn ? 'Disable' : 'Enable'}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -414,42 +421,29 @@ function SortableCard({
         {namingDescriptions[sec.key] || sec.desc}
       </p>
 
-      {/* Values */}
-      <div className="flex flex-wrap gap-[6px] mb-2">
+      {/* Values — click to edit */}
+      <button
+        type="button"
+        onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
+        onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
+        onClick={e => { e.stopPropagation(); onEdit(e); }}
+        title="Edit Token"
+        className="flex flex-wrap gap-[6px] mb-2 text-left cursor-pointer"
+      >
         {displayValues.map(val => (
           <span
             key={val}
-            className="inline-flex items-center px-3 h-[30px] bg-[#333] text-[12px] font-medium text-[#fff] rounded-full"
+            className="inline-flex items-center px-3 h-[28px] bg-[#333] text-[12px] font-medium text-[#fff] rounded-[8px]"
           >
             {val}
           </span>
         ))}
         {remainingCount > 0 && (
-          <span className="inline-flex items-center px-3 h-[30px] bg-[#f5f5f5] text-[12px] font-medium text-[#999] rounded-lg">
+          <span className="inline-flex items-center px-3 h-[28px] bg-[#f5f5f5] text-[12px] font-medium text-[#999] rounded-[8px]">
             +{remainingCount}
           </span>
         )}
-      </div>
-
-      {/* Footer: Settings Icon */}
-      <div className="flex justify-end mt-auto -mb-5 relative bottom-[30px] -right-[5px]">
-        <button
-          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="flex items-center justify-center w-8 h-8 hover:bg-[#f5f5f5] rounded-lg transition-colors"
-          aria-label="Edit settings"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/icon-settings.svg"
-            alt=""
-            width={30}
-            height={30}
-            aria-hidden="true"
-          />
-        </button>
-      </div>
+      </button>
       </div>
     </div>
   );

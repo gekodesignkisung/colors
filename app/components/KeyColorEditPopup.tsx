@@ -62,6 +62,13 @@ export default function KeyColorEditPopup({
   onClose,
   onRemove,
 }: KeyColorEditPopupProps) {
+  const { keyGenSettings, setKeyGenSettings, recomputeDerivedColor, groupLabels, groupOrder, setDefaultKeyGenSettings, useOklch, baseColors } = useColorStore();
+  const settings = keyGenSettings[colorKey];
+
+  // Derive initial values from store settings so first render is correct
+  const initOp = settings?.mode === 'auto' && settings.autoSettings.kind === 'operation'
+    ? (settings.autoSettings as OpGenSettings) : null;
+
   const [hex,   setHex]   = useState(initialHex);
   const [label, setLabel] = useState(initialLabel);
   const [desc,  setDesc]  = useState(initialDescription);
@@ -69,18 +76,20 @@ export default function KeyColorEditPopup({
   const [pickerPos,  setPickerPos]  = useState<{ x: number; y: number } | null>(null);
   const [localGenSettings, setLocalGenSettings] = useState<KeyColorGenSettings | null>(null);
   const [showToast, setShowToast] = useState(false);
+  const [sourceDropOpen, setSourceDropOpen] = useState(false);
 
-  // formula editor state (stage1/stage2/style)
-  const [stage1, setStage1] = useState<'source' | 'grayscale' | 'invert'>('source');
-  const [stage2Op, setStage2Op] = useState<string>('source');
-  const [stage2Param, setStage2Param] = useState<number>(0);
-  const [sourceKey, setSourceKey] = useState<string>('primary');
+  // formula editor state — initialized from store so first render matches page
+  const [stage1, setStage1] = useState<'source' | 'grayscale' | 'invert'>(initOp?.stage1 ?? 'source');
+  const [stage2Op, setStage2Op] = useState<string>(initOp?.operation ?? 'source');
+  const [stage2Param, setStage2Param] = useState<number>(initOp?.param ?? 0);
+  const [sourceKey, setSourceKey] = useState<string>(initOp?.sourceKey ?? 'primary');
 
-  const popupRef  = useRef<HTMLDivElement>(null);
-  const sliderRef = useRef<HTMLInputElement>(null);
+  const popupRef       = useRef<HTMLDivElement>(null);
+  const sliderRef      = useRef<HTMLDivElement>(null);
+  const paramDragging  = useRef(false);
+  const stage2OpRef    = useRef(stage2Op);
+  useEffect(() => { stage2OpRef.current = stage2Op; }, [stage2Op]);
 
-  const { keyGenSettings, setKeyGenSettings, recomputeDerivedColor, groupLabels, groupOrder, setDefaultKeyGenSettings, useOklch, baseColors } = useColorStore();
-  const settings = keyGenSettings[colorKey];
   const currentSettings = localGenSettings || settings;
 
   useEffect(() => {
@@ -104,6 +113,16 @@ export default function KeyColorEditPopup({
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (sourceDropOpen && !(e.target as Element).closest('.source-dropdown')) {
+        setSourceDropOpen(false);
+      }
+    };
+    if (sourceDropOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sourceDropOpen]);
 
   useEffect(() => {
     if (showToast) {
@@ -250,12 +269,23 @@ export default function KeyColorEditPopup({
     return displayHex;
   })();
 
-  // Sync slider fill CSS variable for our stage2 parameter
+  // Custom slider drag handler
   useEffect(() => {
-    if (!sliderRef.current) return;
-    const max = stage2Op === 'colorShift' ? 360 : 100;
-    sliderRef.current.style.setProperty('--pct', `${(stage2Param / max) * 100}%`);
-  }, [stage2Param, stage2Op]);
+    const onMove = (e: MouseEvent) => {
+      if (!paramDragging.current || !sliderRef.current) return;
+      const rect = sliderRef.current.getBoundingClientRect();
+      const max = stage2OpRef.current === 'colorShift' ? 360 : 100;
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      setStage2Param(Math.round(ratio * max));
+    };
+    const onUp = () => { paramDragging.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   /* ── Shared sub-components ── */
   const SwatchCol = (
@@ -266,7 +296,7 @@ export default function KeyColorEditPopup({
         className="hover:opacity-90 transition-opacity"
         title="클릭하여 색상 선택"
       >
-        <ColorShape color={previewColor} size={120} />
+        <ColorShape color={previewColor} size={120} radius={8} />
       </button>
       <div className="flex flex-col items-center gap-0.5 w-full">
         {useOklch ? (() => {
@@ -275,7 +305,7 @@ export default function KeyColorEditPopup({
             <>
               <span className="text-[10px] font-medium text-[#aaa] uppercase tracking-wider">OKLCH</span>
               <span className="text-[11px] font-semibold font-mono text-[#333] text-center">
-                {Math.round(ok.l * 1000) / 10}% {Math.round(ok.c * 1000) / 1000} {Math.round(ok.h)}°
+                {(ok.l * 100).toFixed(1)}% {ok.c.toFixed(3)} {ok.h.toFixed(1)}°
               </span>
             </>
           );
@@ -292,24 +322,27 @@ export default function KeyColorEditPopup({
   const Header = (
     <div className="flex items-center justify-between h-[80px] px-6 shrink-0 border-b border-[#f0f0f0]">
       <div className="flex flex-col gap-0.5">
-        <p className="font-semibold text-[16px] text-[#333]">Key color</p>
-        <p className="text-[12px] font-medium text-[#999]">{groupLabels[colorKey] ?? colorKey}</p>
+        <p className="font-semibold text-[16px] text-[#333]">{groupLabels[colorKey] ?? colorKey} Settings</p>
+        <p className="text-[12px] font-medium text-[#999]">
+          {globalGenerationMode === 'auto'
+            ? 'Set the initial values for the automatically generated colors.'
+            : 'Basic color information settings.'}
+        </p>
       </div>
       <button
         type="button"
         aria-label="닫기"
         onClick={handleCancel}
-        className="w-7 h-7 flex items-center justify-center text-[#808088] hover:text-[#333] transition-colors rounded-full hover:bg-[#f5f5f5]"
+        className="w-7 h-7 flex items-center justify-center"
       >
-        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon-close.svg" alt="닫기" width={20} height={20} />
       </button>
     </div>
   );
 
   const Footer = (
-    <div className="flex items-center justify-between h-[80px] px-[30px] shrink-0 border-t border-[#f0f0f0]">
+    <div className="flex items-center justify-between p-6 shrink-0 border-t border-[#f0f0f0]">
       <div className="flex gap-[10px]">
         {!isCore && onRemove && (
           <button
@@ -320,33 +353,37 @@ export default function KeyColorEditPopup({
             그룹 삭제
           </button>
         )}
-        <button
-          type="button"
-          onClick={handleReset}
-          className="h-9 px-[10px] bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
-        >
-          Reset
-        </button>
-        <button
-          type="button"
-          onClick={handleSetAsDefault}
-          className="h-9 px-[10px] bg-[#eef5ff] rounded-[10px] text-[15px] font-semibold text-[#7490e7] hover:bg-[#ddeaff] transition-colors"
-        >
-          Set Default
-        </button>
+        {globalGenerationMode === 'auto' && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="h-9 px-[10px] bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
+          >
+            Reset
+          </button>
+        )}
+        {globalGenerationMode === 'auto' && (
+          <button
+            type="button"
+            onClick={handleSetAsDefault}
+            className="h-9 px-[10px] bg-[#eef5ff] rounded-[10px] text-[15px] font-semibold text-[#7490e7] hover:bg-[#ddeaff] transition-colors"
+          >
+            Set Default
+          </button>
+        )}
       </div>
       <div className="flex gap-[10px]">
         <button
           type="button"
           onClick={handleCancel}
-          className="w-[100px] h-9 bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
+          className="w-[125px] h-9 bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSave}
-          className="w-[100px] h-9 bg-[#666666] rounded-[10px] text-[15px] font-semibold text-white hover:bg-[#555] transition-colors"
+          className="w-[125px] h-9 bg-[#666666] rounded-[10px] text-[15px] font-semibold text-white hover:bg-[#555] transition-colors"
         >
           Save
         </button>
@@ -368,73 +405,76 @@ export default function KeyColorEditPopup({
 
   if (globalGenerationMode === 'manual') {
     return (
-      <div className="fixed inset-0 z-50 bg-black/30">
-        <div
-          ref={popupRef}
-          style={getPositionStyle()}
-          className="absolute bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[640px] flex flex-col overflow-hidden relative"
-        >
-          {Header}
+      <>
+        <div className="fixed inset-0 z-50 bg-black/30">
+          <div
+            ref={popupRef}
+            style={getPositionStyle()}
+            className="bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[640px] flex flex-col overflow-hidden"
+          >
+            {Header}
 
-          <div className="flex flex-1 gap-px bg-[#f0f0f0] min-h-0">
-            {SwatchCol}
+            <div className="flex flex-1 gap-px bg-[#f0f0f0] min-h-0">
+              {SwatchCol}
 
-            {/* Right: Title + Description */}
-            <div className="bg-white flex flex-col gap-[30px] flex-1 p-6 min-h-0">
-              <div className="flex flex-col gap-2">
-                <label className="font-semibold text-[12px] text-[#666]">Title</label>
-                <input
-                  type="text"
-                  value={label}
-                  onChange={e => setLabel(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleSave(); }}
-                  className="h-9 border border-[#dddddd] rounded-[10px] px-3 text-[14px] font-medium text-[#333] outline-none focus:border-[#808088]"
-                  placeholder="Primary"
-                />
+              {/* Right: Title + Description */}
+              <div className="bg-white flex flex-col gap-[30px] flex-1 p-6 min-h-0">
+                <div className="flex flex-col gap-2">
+                  <label className="font-semibold text-[12px] text-[#666]">Title</label>
+                  <input
+                    type="text"
+                    value={label}
+                    onChange={e => setLabel(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSave(); }}
+                    className="h-9 border border-[#dddddd] rounded-[10px] px-3 text-[14px] font-medium text-[#333] outline-none focus:border-[#808088]"
+                    placeholder="Primary"
+                  />
+                </div>
+                <div className="flex flex-col gap-2 flex-1 min-h-0">
+                  <label className="font-semibold text-[12px] text-[#666]">Description</label>
+                  <textarea
+                    value={desc}
+                    onChange={e => setDesc(e.target.value)}
+                    className="flex-1 border border-[#dddddd] rounded-[10px] px-3 py-2.5 text-[13px] font-medium text-[#333] outline-none focus:border-[#808088] resize-none min-h-0"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col gap-2 flex-1 min-h-0">
-                <label className="font-semibold text-[12px] text-[#666]">Description</label>
-                <textarea
-                  value={desc}
-                  onChange={e => setDesc(e.target.value)}
-                  className="flex-1 border border-[#dddddd] rounded-[10px] px-3 py-2.5 text-[13px] font-medium text-[#333] outline-none focus:border-[#808088] resize-none min-h-0"
-                />
-              </div>
+            </div>
+
+            {Footer}
+          </div>
+        </div>
+
+        {showPicker && (
+          <div className="fixed inset-0 z-[60]">
+            <ColorPicker
+              color={isValidHex(hex) ? normalizeHex(hex) : initialHex}
+              anchorPos={pickerPos ?? undefined}
+              onChange={handlePickerChange}
+              onClose={handlePickerClose}
+            />
+          </div>
+        )}
+
+        {showToast && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70]">
+            <div className="bg-[#333] text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
+              현재 설정이 초기값으로 저장되었습니다.
             </div>
           </div>
-
-          {Footer}
-
-          {showPicker && (
-            <div className="fixed inset-0 z-[60]">
-              <ColorPicker
-                color={isValidHex(hex) ? normalizeHex(hex) : initialHex}
-                anchorPos={pickerPos ?? undefined}
-                onChange={handlePickerChange}
-                onClose={handlePickerClose}
-              />
-            </div>
-          )}
-
-          {showToast && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70]">
-              <div className="bg-[#333] text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
-                현재 설정이 초기값으로 저장되었습니다.
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+        )}
+      </>
     );
   }
 
   // Auto mode
   return (
+    <>
     <div className="fixed inset-0 z-50 bg-black/30">
       <div
         ref={popupRef}
         style={getPositionStyle()}
-        className="absolute bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[900px] flex flex-col overflow-hidden relative"
+        className="bg-white rounded-[20px] shadow-[0px_4px_24px_0px_rgba(0,0,0,0.12)] w-[900px] flex flex-col overflow-hidden"
       >
         {Header}
 
@@ -473,16 +513,35 @@ export default function KeyColorEditPopup({
                 {/* Source color selector */}
                 <div className="flex flex-col gap-2">
                   <label className="font-semibold text-[12px] text-[#666]">Source color</label>
-                  <select
-                    aria-label="Source color"
-                    value={sourceKey}
-                    onChange={e => handleSourceChange(e.target.value)}
-                    className="h-9 px-3 border border-[#dddddd] rounded-[10px] text-[14px] font-medium text-[#333] outline-none focus:border-[#808088] bg-white appearance-none cursor-pointer"
-                  >
-                    {groupOrder.map(k => (
-                      <option key={k} value={k}>{groupLabels[k] ?? k}</option>
-                    ))}
-                  </select>
+                  <div className="source-dropdown relative">
+                    <div
+                      onClick={() => setSourceDropOpen(v => !v)}
+                      className="h-9 px-3 border border-[#dddddd] rounded-[10px] text-[14px] font-medium text-[#333] bg-white cursor-pointer flex items-center justify-between"
+                    >
+                      <span>{groupLabels[sourceKey] ?? sourceKey}</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/icon-bullet-dn.svg" alt="" width={20} height={20} />
+                    </div>
+                    {sourceDropOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#ddd] rounded-[10px] overflow-hidden z-50 shadow-[0_4px_12px_rgba(0,0,0,0.1)]">
+                        {groupOrder.map(k => (
+                          <div
+                            key={k}
+                            onClick={() => { handleSourceChange(k); setSourceDropOpen(false); }}
+                            className="px-3 py-2 text-[14px] font-medium cursor-pointer"
+                            style={{
+                              color: sourceKey === k ? '#606070' : '#333',
+                              background: sourceKey === k ? '#f5f5f5' : 'transparent',
+                            }}
+                            onMouseEnter={e => { if (sourceKey !== k) (e.currentTarget as HTMLElement).style.background = '#f9f9f9'; }}
+                            onMouseLeave={e => { if (sourceKey !== k) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                          >
+                            {groupLabels[k] ?? k}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Stage 1 */}
@@ -539,8 +598,10 @@ export default function KeyColorEditPopup({
                 {(() => {
                   const currentStage2 = STAGE2_OPS.find(o => o.value === stage2Op);
                   const max = stage2Op === 'colorShift' ? 360 : 100;
+                  const pct = Math.max(0, Math.min(1, stage2Param / max));
                   return (
-                    <div className={`flex flex-col gap-2 ${currentStage2?.hasParam ? '' : 'invisible'}`}>
+                    <div className={`flex flex-col gap-[14px] ${currentStage2?.hasParam ? '' : 'invisible'}`}>
+                      {/* Header row */}
                       <div className="flex items-center justify-between">
                         <label className="font-semibold text-[12px] text-[#666]">
                           {currentStage2?.paramLabel || 'Param'}
@@ -552,22 +613,39 @@ export default function KeyColorEditPopup({
                             max={max}
                             value={stage2Param}
                             onChange={e => handleStage2ParamChange(Number(e.target.value))}
-                            className="w-12 text-[12px] font-medium text-[#808088] text-right border border-[#e8e8e8] rounded-[6px] px-1.5 py-0.5 outline-none"
+                            style={{
+                              height: 28, width: 58, padding: '0 8px',
+                              border: '1px solid #ddd', borderRadius: 6,
+                              fontSize: 13, fontWeight: 500, color: '#333',
+                              textAlign: 'right', outline: 'none', background: 'white',
+                            }}
                           />
-                          <span className="text-[12px] text-[#aaa]">
+                          <span className="text-[10px] text-[#ccc]">
                             {stage2Op === 'colorShift' ? '°' : '%'}
                           </span>
                         </div>
                       </div>
-                      <input
+                      {/* Custom track */}
+                      <div
                         ref={sliderRef}
-                        type="range"
-                        min={0}
-                        max={max}
-                        value={stage2Param}
-                        onChange={e => handleStage2ParamChange(Number(e.target.value))}
-                        className="param-slider w-full cursor-pointer appearance-none h-[4px] rounded-full"
-                      />
+                        style={{ position: 'relative', height: 14, cursor: 'pointer', width: '100%' }}
+                        onMouseDown={e => {
+                          paramDragging.current = true;
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                          setStage2Param(Math.round(ratio * max));
+                        }}
+                      >
+                        <div style={{ position: 'absolute', top: 5, left: 0, right: 0, height: 4, background: '#ddd', borderRadius: 50 }} />
+                        <div style={{ position: 'absolute', top: 5, left: 0, width: `${pct * 100}%`, height: 4, background: '#808088', borderRadius: 50 }} />
+                        <div style={{
+                          position: 'absolute', top: 0,
+                          left: `calc(${pct * 100}% - 7px)`,
+                          width: 14, height: 14, borderRadius: '50%',
+                          background: 'white', border: '2px solid #808088',
+                          pointerEvents: 'none',
+                        }} />
+                      </div>
                     </div>
                   );
                 })()}
@@ -596,6 +674,9 @@ export default function KeyColorEditPopup({
                   const labelMap: Record<string, string> = useOklch
                     ? { l: 'L', s: 'C', h: 'H' }
                     : { h: 'H', s: 'S', l: 'L' };
+                  const unitMap: Record<string, string> = useOklch
+                    ? { l: '%', s: '%', h: '°' }
+                    : { h: '°', s: '%', l: '%' };
                   const floorMap: Record<string, number> = { h: 0, s: 0, l: 0 };
                   const ceilMap: Record<string, number> = { h: 360, s: 100, l: 100 };
                   const value = (rangeSettings.rule as any)[channel];
@@ -606,6 +687,7 @@ export default function KeyColorEditPopup({
                       floor={floorMap[channel]}
                       ceil={ceilMap[channel]}
                       value={value}
+                      unit={unitMap[channel]}
                       onChange={v => handleRangeChange(channel as 'h' | 's' | 'l', v)}
                     />
                   );
@@ -617,25 +699,27 @@ export default function KeyColorEditPopup({
 
         {Footer}
 
-        {showPicker && (
-          <div className="fixed inset-0 z-[60]">
-            <ColorPicker
-              color={isValidHex(hex) ? normalizeHex(hex) : initialHex}
-              anchorPos={pickerPos ?? undefined}
-              onChange={handlePickerChange}
-              onClose={handlePickerClose}
-            />
-          </div>
-        )}
-
-        {showToast && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70]">
-            <div className="bg-[#333] text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
-              현재 설정이 초기값으로 저장되었습니다.
-            </div>
-          </div>
-        )}
       </div>
     </div>
+
+    {showPicker && (
+      <div className="fixed inset-0 z-[60]">
+        <ColorPicker
+          color={isValidHex(hex) ? normalizeHex(hex) : initialHex}
+          anchorPos={pickerPos ?? undefined}
+          onChange={handlePickerChange}
+          onClose={handlePickerClose}
+        />
+      </div>
+    )}
+
+    {showToast && (
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70]">
+        <div className="bg-[#333] text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium whitespace-nowrap">
+          현재 설정이 초기값으로 저장되었습니다.
+        </div>
+      </div>
+    )}
+    </>
   );
 }
