@@ -156,7 +156,6 @@ export default function SectionEditPopup({
           ) : (
             <>
               <div>
-                <label className="block text-sm font-semibold mb-3 text-[#333]">값</label>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {((localEdit as string[]) ?? []).map(tag => (
                     <div

@@ -163,7 +163,7 @@ export default function Step2BaseColorInput({ introStep, onNext }: BaseColorInpu
       {/* Content area with modified row design */}
       <div className="flex-1 overflow-y-auto p-0">
         <div className="flex flex-col gap-0">
-          <div className="flex flex-col pt-2">
+          <div className="flex flex-col pt-2 rounded-[10px] overflow-hidden">
             {groupOrder.map((key, idx) => {
               const label = groupLabels[key] ?? key;
               const raw = baseColors[key] ?? '#000000';
@@ -176,18 +176,14 @@ export default function Step2BaseColorInput({ introStep, onNext }: BaseColorInpu
               return (
                 <div
                   key={key}
-                  className="flex items-center justify-between h-[100px] px-6 border-b border-[#f0f0f0]"
+                  className="flex items-center justify-between h-[100px] px-5 border-b border-[#f0f0f0]"
                 >
-                  <div className={`flex items-center gap-4 flex-1 min-w-0 transition-opacity duration-300 ${!enabled ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
+                  <div className={`flex items-center gap-4 min-w-0 flex-1 transition-opacity duration-300 ${!enabled ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}>
                     <button
                       type="button"
-                      className="shrink-0"
-                      onClick={e => { setPickerKey(key); setPickerPos({ x: e.clientX, y: e.clientY }); }}
-                      title="Click to pick color"
+                      onClick={e => { setSelectedKey(key); setEditPopupPos({ x: e.clientX, y: e.clientY }); }}
+                      className="flex flex-col text-left pl-[20px] py-2 pr-3 rounded-[10px] hover:bg-[#f5f5f5] transition-colors cursor-pointer border-0 bg-transparent flex-1 min-w-0"
                     >
-                      <div className={`w-[200px] h-[60px] rounded-full transition-all duration-300 ${!enabled ? 'opacity-0' : ''}`} style={{ backgroundColor: raw }}></div>
-                    </button>
-                    <div className="flex flex-col text-left pl-[20px]">
                       <span className="text-[16px] font-semibold text-[#333]">{label}</span>
                       {enabled && (
                         <div className="flex items-center gap-3">
@@ -197,37 +193,32 @@ export default function Step2BaseColorInput({ introStep, onNext }: BaseColorInpu
                           )}
                         </div>
                       )}
+                    </button>
+                    <div className="flex items-center shrink-0" style={{ marginRight: 14 }}>
+                      {(key === 'secondary' || key === 'tertiary') ? (
+                        <button
+                          type="button"
+                          onClick={() => { setGroupEnabled(key, !enabled); }}
+                          className="flex items-center justify-center cursor-pointer border-0 bg-transparent hover:scale-[1.2] transition-transform duration-200"
+                          style={{ width: 48, height: 48, margin: -8 }}
+                        >
+                          <div className="relative w-5 h-8 shrink-0">
+                            <img src="/icon-switch2-on.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 transition-opacity duration-300 ${enabled ? 'opacity-100' : 'opacity-0'}`} />
+                            <img src="/icon-switch2-off.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${enabled ? 'opacity-0' : 'opacity-100'}`} />
+                          </div>
+                        </button>
+                      ) : (
+                        <div style={{ width: 32 }} />
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-9 shrink-0">
                     <button
                       type="button"
-                      onClick={e => { setSelectedKey(key); setEditPopupPos({ x: e.clientX, y: e.clientY }); }}
-                      className={`flex items-center justify-center w-[30px] h-[30px] transition-transform hover:scale-[1.2] transition-opacity duration-300 ${(key === 'secondary' || key === 'tertiary') && !enabled ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
-                      title="Color settings"
+                      className="shrink-0 hover:scale-[1.1] transition-transform duration-200"
+                      onClick={e => { setPickerKey(key); setPickerPos({ x: e.clientX, y: e.clientY }); }}
+                      title="Click to pick color"
                     >
-                      <img
-                        src={globalGenerationMode === 'auto' ? '/icon-settings.svg' : '/icon-setting.svg'}
-                        alt="settings"
-                        width={30}
-                        height={30}
-                      />
+                      <div className={`w-[200px] h-[60px] rounded-full transition-all duration-300 ${!enabled ? 'opacity-0' : ''}`} style={{ backgroundColor: raw }}></div>
                     </button>
-                    {(key === 'secondary' || key === 'tertiary') ? (
-                      <button
-                        type="button"
-                        onClick={() => { setGroupEnabled(key, !enabled); }}
-                        className="flex items-center justify-center cursor-pointer border-0 bg-transparent"
-                        style={{ width: 48, height: 48, margin: -8 }}
-                      >
-                        <div className="relative w-5 h-8 shrink-0">
-                          <img src="/icon-switch2-on.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 transition-opacity duration-300 ${enabled ? 'opacity-100' : 'opacity-0'}`} />
-                          <img src="/icon-switch2-off.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${enabled ? 'opacity-0' : 'opacity-100'}`} />
-                        </div>
-                      </button>
-                    ) : (
-                      <div style={{ width: 32 }} />
-                    )}
                   </div>
                 </div>
               );
@@ -235,51 +226,51 @@ export default function Step2BaseColorInput({ introStep, onNext }: BaseColorInpu
           </div>
 
           {/* bottom generate and toggles row */}
-          <div className="flex items-center gap-[40px] pl-5 py-5">
-            {globalGenerationMode === 'auto' ? (
-              <button
-                type="button"
-                onClick={randomizeColors}
-                className="w-[200px] h-[60px] bg-white border border-[#999] rounded-[50px] shadow-[0px_3px_10px_rgba(0,0,0,0.1)] flex items-center justify-center gap-[10px] shrink-0"
-              >
-                <img src="/icon-generate.svg" alt="" width={22} height={22} />
-                <span className="font-semibold text-[16px] text-[#333]">Generate</span>
-              </button>
-            ) : (
-              <div className="w-[200px] h-[60px] shrink-0"></div>
-            )}
-            <div className="flex items-center gap-[15px]">
-              {/* Auto Generation card */}
-              <button
-                type="button"
-                onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
-                className="w-[255px] h-[60px] bg-[#f5f5f5] rounded-[10px] flex items-center justify-between px-[15px] p-0 border-0 shrink-0"
-              >
-                <div className="flex flex-col items-start gap-1">
-                  <span className="text-[14px] font-semibold text-[#333] whitespace-nowrap">Auto Generation</span>
-                  <span className="text-[11px] text-[#999] whitespace-nowrap">Generate all key colors automatically</span>
-                </div>
-                <div className="relative w-5 h-8 shrink-0">
-                  <img src="/icon-switch2-on.svg" alt="" width={20} height={32} className={`block w-5 h-8 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-100' : 'opacity-0'}`} />
-                  <img src="/icon-switch2-off.svg" alt="" width={20} height={32} className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-0' : 'opacity-100'}`} />
-                </div>
-              </button>
+          <div className="flex items-center gap-[40px] pl-10 py-5 rounded-[10px]">
+            <div className="flex items-center gap-[15px] ml-[-16px]">
               {/* OKLCH card */}
               <button
                 type="button"
                 onClick={toggleOklch}
-                className="w-[255px] h-[60px] bg-[#f5f5f5] rounded-[10px] flex items-center justify-between px-[15px] p-0 border-0 shrink-0"
+                className="w-[265px] h-[60px] bg-transparent hover:bg-[#f5f5f5] rounded-[10px] flex items-center justify-between px-5 p-0 border-0 shrink-0 transition-colors ml-[-5px]"
               >
                 <div className="flex flex-col items-start gap-1">
                   <span className="text-[14px] font-semibold text-[#333] whitespace-nowrap">OKLCH Color Space</span>
                   <span className="text-[11px] text-[#999] whitespace-nowrap">Perceptually uniform color space</span>
                 </div>
-                <div className="relative w-5 h-8 shrink-0">
+                <div className="relative w-5 h-8 shrink-0 hover:scale-[1.2] transition-transform duration-200">
                   <img src="/icon-switch2-on.svg" alt="" width={20} height={32} className={`block w-5 h-8 transition-opacity duration-300 ${useOklch ? 'opacity-100' : 'opacity-0'}`} />
                   <img src="/icon-switch2-off.svg" alt="" width={20} height={32} className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${useOklch ? 'opacity-0' : 'opacity-100'}`} />
                 </div>
               </button>
+              {/* Auto Generation card */}
+              <button
+                type="button"
+                onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
+                className="w-[265px] h-[60px] bg-transparent hover:bg-[#f5f5f5] rounded-[10px] flex items-center justify-between px-5 p-0 border-0 shrink-0 transition-colors mr-[-20px]"
+              >
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-[14px] font-semibold text-[#333] whitespace-nowrap">Auto Generation</span>
+                  <span className="text-[11px] text-[#999] whitespace-nowrap">Generate all key colors automatically</span>
+                </div>
+                <div className="relative w-5 h-8 shrink-0 hover:scale-[1.2] transition-transform duration-200">
+                  <img src="/icon-switch2-on.svg" alt="" width={20} height={32} className={`block w-5 h-8 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-100' : 'opacity-0'}`} />
+                  <img src="/icon-switch2-off.svg" alt="" width={20} height={32} className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-0' : 'opacity-100'}`} />
+                </div>
+              </button>
             </div>
+            {globalGenerationMode === 'auto' ? (
+              <button
+                type="button"
+                onClick={randomizeColors}
+                className="w-[200px] h-[60px] bg-white border border-[#999] rounded-[50px] shadow-[0px_3px_10px_rgba(0,0,0,0.1)] flex items-center justify-center gap-[10px] shrink-0 ml-auto mr-5 -translate-x-1"
+              >
+                <img src="/icon-generate.svg" alt="" width={30} height={30} />
+                <span className="font-semibold text-[16px] text-[#333]">Generate</span>
+              </button>
+            ) : (
+              <div className="w-[200px] h-[60px] shrink-0 ml-auto"></div>
+            )}
           </div>
         </div>
       </div>

@@ -380,7 +380,7 @@ function SortableCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="border border-[#aaa] rounded-2xl pt-[6px] px-4 pb-0 bg-white cursor-grab active:cursor-grabbing transition-all flex flex-col min-h-[160px] shadow-[0_4px_10px_rgba(0,0,0,0.05)]"
+      className="border border-[#aaa] rounded-2xl pt-[6px] px-4 pb-3 bg-white cursor-grab active:cursor-grabbing transition-all flex flex-col min-h-[160px] shadow-[0_4px_10px_rgba(0,0,0,0.05)]"
       {...attributes}
       {...listeners}
     >

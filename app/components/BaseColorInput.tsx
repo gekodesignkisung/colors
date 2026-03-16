@@ -37,9 +37,10 @@ const CORE_KEYS = new Set(['primary', 'secondary', 'tertiary', 'neutral']);
 interface BaseColorInputProps {
   introStep?: number;
   onNext?: () => void;
+  onNewProject?: () => void;
 }
 
-export default function BaseColorInput({ introStep, onNext }: BaseColorInputProps) {
+export default function BaseColorInput({ introStep, onNext, onNewProject }: BaseColorInputProps) {
   const {
     baseColors, groupOrder, groupLabels, groupDescriptions,
     setBaseColor, setGroupLabel, setGroupDescription,
@@ -123,9 +124,8 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
       label: 'New project',
       onClick: () => {
         setShowMenu(false);
-        setNewSystemName('');
-        setShowNewDialog(true);
-        setTimeout(() => newNameInputRef.current?.focus(), 50);
+        newProject();
+        onNewProject?.();
       },
     },
     {
@@ -349,7 +349,7 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
         <button
           type="button"
           onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
-          className="flex items-center gap-5 h-[60px] w-full bg-[#f5f5f5] rounded-[10px] px-[15px] cursor-pointer border-0 text-left"
+          className="flex items-center gap-5 h-[60px] w-full bg-[#f5f5f5] rounded-[20px] px-[15px] cursor-pointer border-0 text-left"
         >
           <div className="flex flex-col gap-1 flex-1 min-w-0">
             <p className="font-semibold text-[14px] text-[#333] leading-tight whitespace-nowrap">Auto Generation</p>
@@ -363,7 +363,7 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
         <button
           type="button"
           onClick={toggleOklch}
-          className="flex items-center gap-5 h-[60px] w-full bg-[#f5f5f5] rounded-[10px] px-[15px] cursor-pointer border-0 text-left"
+          className="flex items-center gap-5 h-[60px] w-full bg-[#f5f5f5] rounded-[20px] px-[15px] cursor-pointer border-0 text-left"
         >
           <div className="flex flex-col gap-1 flex-1 min-w-0">
             <p className="font-semibold text-[14px] text-[#333] leading-tight whitespace-nowrap">OKLCH Color Space</p>
@@ -468,6 +468,7 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
                     newProject();
                     setProjectName(newSystemName.trim() || 'Untitled');
                     setShowNewDialog(false);
+                    onNewProject?.();
                   }
                   if (e.key === 'Escape') setShowNewDialog(false);
                 }}
@@ -491,6 +492,7 @@ export default function BaseColorInput({ introStep, onNext }: BaseColorInputProp
                   newProject();
                   setProjectName(newSystemName.trim() || 'Untitled');
                   setShowNewDialog(false);
+                  onNewProject?.();
                 }}
                 className="h-9 w-[90px] bg-[#666] rounded-[10px] text-[14px] font-medium text-white hover:bg-[#555] transition-colors"
               >

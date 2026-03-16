@@ -531,7 +531,7 @@ export const useColorStore = create<ColorStore>()(
   // ── Save / Load ─────────────────────────────────────────────────────────────
   newProject: () => {
     // reset onboarding flow when creating a new project
-    try { localStorage.setItem('introStep', '0'); } catch {}
+    try { localStorage.setItem('introStep', '-1'); } catch {}
 
     const state = get();
     const namingConfig: NamingConfig = {

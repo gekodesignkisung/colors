@@ -455,9 +455,9 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
               </div>
               {gamutDropOpen && (
                 <div style={{
-                  position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
                   background: 'white', border: '1px solid #ddd', borderRadius: 10,
-                  overflow: 'hidden', zIndex: 50, whiteSpace: 'nowrap',
+                  overflow: 'hidden', zIndex: 50,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                 }}>
                   {(['srgb', 'p3'] as const).map((val) => (

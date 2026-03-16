@@ -84,7 +84,7 @@ export default function Home() {
       {/* 4 Pillars in Main Workspace */}
       <aside style={{ flexShrink: 0, width: 300 }} className="flex flex-col bg-white overflow-hidden opacity-100">
         <div className="flex-1 overflow-auto opacity-100">
-          <BaseColorInput introStep={introStep} />
+          <BaseColorInput introStep={introStep} onNewProject={() => setIntroStep(-1)} />
         </div>
       </aside>
 
