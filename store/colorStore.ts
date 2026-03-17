@@ -341,35 +341,38 @@ export const useColorStore = create<ColorStore>()(
 
 
   randomizeColors: () => {
-    const { groupOrder, baseColors: prev, generateRules, keyGenSettings, groupEnabled } = get();
+    const { groupOrder, baseColors: prev, generateRules, keyGenSettings, groupEnabled, globalGenerationMode } = get();
     const resolved: BaseColors = {};
-
-    console.log('randomizeColors - keyGenSettings:', keyGenSettings);
 
     // Pass 1: manual + range-auto
     for (const k of groupOrder) {
       if (!groupEnabled[k]) {
-        // if disabled, leave previous value untouched
         resolved[k] = prev[k];
         continue;
       }
       const kgs = keyGenSettings[k];
-      console.log(`Pass 1 - ${k}:`, kgs);
-      if (!kgs || kgs.mode === 'manual') {
+      const effectiveMode = globalGenerationMode === 'auto' ? 'auto' : (kgs?.mode ?? 'manual');
+      if (effectiveMode === 'manual') {
         resolved[k] = prev[k] ?? generateRandomColor();
-      } else if (kgs.autoSettings.kind === 'range') {
+      } else if (kgs?.autoSettings.kind === 'range') {
         const rule = (kgs.autoSettings as any).rule ?? generateRules[k] ?? DEFAULT_GENERATE_RULES[k];
         resolved[k] = rule ? generateRandomColorInRange(rule, get().useOklch) : generateRandomColor();
+      } else if (kgs?.autoSettings.kind === 'operation') {
+        // placeholder — will be resolved in Pass 2
+        resolved[k] = prev[k] ?? generateRandomColor();
+      } else {
+        // no kgs: use default range rule if available, else random
+        const defaultRule = DEFAULT_GENERATE_RULES[k] ?? DEFAULT_GENERATE_RULE;
+        resolved[k] = generateRandomColorInRange(defaultRule, get().useOklch);
       }
     }
 
-    console.log('After Pass 1 - resolved:', resolved);
-
     // Pass 2: operation-based auto
     for (const k of groupOrder) {
+      if (!groupEnabled[k]) continue;
       const kgs = keyGenSettings[k];
-      console.log(`Pass 2 - ${k}:`, kgs, '- kind:', kgs?.autoSettings.kind);
-      if (kgs?.mode === 'auto' && kgs.autoSettings.kind === 'operation') {
+      const effectiveMode = globalGenerationMode === 'auto' ? 'auto' : (kgs?.mode ?? 'manual');
+      if (effectiveMode === 'auto' && kgs?.autoSettings.kind === 'operation') {
         const { sourceKey, stage1, operation, param } = kgs.autoSettings as OpGenSettings;
         // stage1 may be undefined (defaults to 'source')
         const fakeRule: any = { stage1: stage1 ?? 'source', operation, source: sourceKey, param, description: '' };
@@ -670,7 +673,17 @@ export const useColorStore = create<ColorStore>()(
       useOklch: data.useOklch ?? true,
       isDark: data.isDark ?? false,
       generateRules: data.generateRules ?? {},
-      keyGenSettings: data.keyGenSettings ?? { ...DEFAULT_KEY_GEN_SETTINGS },
+      keyGenSettings: (() => {
+        const loaded = data.keyGenSettings ?? {};
+        const merged: Record<string, KeyColorGenSettings> = { ...DEFAULT_KEY_GEN_SETTINGS };
+        for (const k of Object.keys(loaded)) {
+          merged[k] = {
+            mode: loaded[k].mode ?? DEFAULT_KEY_GEN_SETTINGS[k]?.mode ?? 'manual',
+            autoSettings: loaded[k].autoSettings ?? DEFAULT_KEY_GEN_SETTINGS[k]?.autoSettings ?? { kind: 'range', rule: { ...DEFAULT_GENERATE_RULE } },
+          };
+        }
+        return merged;
+      })(),
       globalGenerationMode: data.globalGenerationMode ?? 'manual',
       groupEnabled: data.groupEnabled ?? {
         primary: true,

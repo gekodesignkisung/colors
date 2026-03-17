@@ -62,8 +62,8 @@ export default function TokenList({ showNext, onNext }: TokenListProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between shrink-0 h-14 bg-[#808090] px-[15px] gap-5">
-        <span className="font-semibold text-[16px] text-white">Generated Colors</span>
+      <div className="flex items-center justify-between shrink-0 h-14 bg-[#505060] px-[15px] gap-5">
+        <span className="font-semibold text-[16px] text-white">Color Tokens</span>
         <div className="flex items-center gap-0">
           <button
             type="button"
@@ -91,7 +91,7 @@ export default function TokenList({ showNext, onNext }: TokenListProps) {
       </div>
 
       {/* Sort row */}
-      <div className="flex items-center justify-between shrink-0 h-[40px] bg-[#f5f5f5] border-b border-[#dddddf] px-[15px]">
+      <div className="flex items-center justify-between shrink-0 h-[40px] bg-white border-b border-[#dddddf] px-[15px]">
         <span className="font-semibold text-[13px] text-[#999]">
           Tokens <span className="font-normal text-[#bbb]">{tokens.length}</span>
         </span>

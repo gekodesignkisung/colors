@@ -72,15 +72,10 @@ export default function Step3TokenPanel({
                 <div className="font-semibold text-sm text-[#333]">Namespace</div>
                 <div className="text-[12px] font-medium text-[#999]">전체 토큰을 구분하는 최상위 식별자</div>
               </div>
-              <img
-                src={enabled.includes('namespace') ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-                alt=""
-                width={24}
-                height={40}
-                aria-hidden="true"
-                onClick={() => toggleEnabled('namespace')}
-                className="shrink-0 cursor-pointer mt-1"
-              />
+              <div onClick={() => toggleEnabled('namespace')} className="relative w-6 h-10 shrink-0 cursor-pointer mt-1 hover:scale-[1.2] transition-transform duration-200">
+                <img src="/icon-switch2-on.svg" alt="" width={24} height={40} className={`absolute inset-0 transition-opacity duration-300 ${enabled.includes('namespace') ? 'opacity-100' : 'opacity-0'}`} />
+                <img src="/icon-switch2-off.svg" alt="" width={24} height={40} className={`absolute inset-0 transition-opacity duration-300 ${enabled.includes('namespace') ? 'opacity-0' : 'opacity-100'}`} />
+              </div>
             </div>
             <input
               type="text"
@@ -98,15 +93,10 @@ export default function Step3TokenPanel({
                 <div className="font-semibold text-sm text-[#333]">Theme</div>
                 <div className="text-[12px] font-medium text-[#999]">CSS scope로 처리 (토큰명에 포함 안 됨)</div>
               </div>
-              <img
-                src={enabled.includes('theme') ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-                alt=""
-                width={24}
-                height={40}
-                aria-hidden="true"
-                onClick={() => toggleEnabled('theme')}
-                className="shrink-0 cursor-pointer mt-1"
-              />
+              <div onClick={() => toggleEnabled('theme')} className="relative w-6 h-10 shrink-0 cursor-pointer mt-1 hover:scale-[1.2] transition-transform duration-200">
+                <img src="/icon-switch2-on.svg" alt="" width={24} height={40} className={`absolute inset-0 transition-opacity duration-300 ${enabled.includes('theme') ? 'opacity-100' : 'opacity-0'}`} />
+                <img src="/icon-switch2-off.svg" alt="" width={24} height={40} className={`absolute inset-0 transition-opacity duration-300 ${enabled.includes('theme') ? 'opacity-0' : 'opacity-100'}`} />
+              </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-[6px]">
               {THEME_OPTIONS.map(t => (
@@ -222,15 +212,10 @@ export default function Step3TokenPanel({
                                 : '사이즈 (small, medium...)'}
                   </div>
                 </div>
-                <img
-                  src={enabled.includes(key) ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-                  alt=""
-                  width={24}
-                  height={40}
-                  aria-hidden="true"
-                  onClick={() => toggleEnabled(key)}
-                  className="shrink-0 cursor-pointer mt-1"
-                />
+                <div onClick={() => toggleEnabled(key)} className="relative w-6 h-10 shrink-0 cursor-pointer mt-1 hover:scale-[1.2] transition-transform duration-200">
+                  <img src="/icon-switch2-on.svg" alt="" width={24} height={40} className={`absolute inset-0 transition-opacity duration-300 ${enabled.includes(key) ? 'opacity-100' : 'opacity-0'}`} />
+                  <img src="/icon-switch2-off.svg" alt="" width={24} height={40} className={`absolute inset-0 transition-opacity duration-300 ${enabled.includes(key) ? 'opacity-0' : 'opacity-100'}`} />
+                </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-[6px]">
                 {options[key].map(v => (

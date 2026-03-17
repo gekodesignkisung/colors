@@ -168,7 +168,7 @@ function OklchSlider({ label, value, min, max, step = 0.001, onChange, inputDeci
         style={{ position: 'relative', height: 14, cursor: 'pointer', width: '100%' }}
         onMouseDown={e => { dragging.current = true; applyPos(e.clientX); }}
       >
-        <div style={{ position: 'absolute', top: 5, left: 0, right: 0, height: 4, background: '#ddd', borderRadius: 50 }} />
+        <div style={{ position: 'absolute', top: 5, left: 0, right: 0, height: 4, background: '#f0f0f0', borderRadius: 50 }} />
         <div style={{ position: 'absolute', top: 5, left: 0, width: `${pct * 100}%`, height: 4, background: '#808088', borderRadius: 50 }} />
         {/* Ghost thumb — raw uncorrected position */}
         {ghostValue !== undefined && (
@@ -188,6 +188,7 @@ function OklchSlider({ label, value, min, max, step = 0.001, onChange, inputDeci
           left: `calc(${pct * 100}% - 7px)`,
           width: 14, height: 14, borderRadius: '50%',
           background: 'white', border: '2px solid #808088',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
           pointerEvents: 'none',
         }} />
       </div>
@@ -208,9 +209,9 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
   const [l, setL] = useState(init.l);
   const [c, setC] = useState(init.c);
   const [h, setH] = useState(init.h);
-  const [gamutTarget,    setGamutTarget]    = useState<GamutTarget>('p3');
-  const [showBoundary,   setShowBoundary]   = useState(true);
-  const [clipToGamut,    setClipToGamut]    = useState(false);
+  const [gamutTarget,    setGamutTarget]    = useState<GamutTarget>(() => (localStorage.getItem('oklch_gamutTarget') as GamutTarget) ?? 'p3');
+  const [showBoundary,   setShowBoundary]   = useState(() => localStorage.getItem('oklch_showBoundary') !== 'false');
+  const [clipToGamut,    setClipToGamut]    = useState(() => localStorage.getItem('oklch_clipToGamut') === 'true');
   const [gamutDropOpen,  setGamutDropOpen]  = useState(false);
 
   const canvasRef  = useRef<HTMLCanvasElement>(null);
@@ -463,7 +464,7 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
                   {(['srgb', 'p3'] as const).map((val) => (
                     <div
                       key={val}
-                      onClick={() => { setGamutTarget(val); setGamutDropOpen(false); }}
+                      onClick={() => { setGamutTarget(val); localStorage.setItem('oklch_gamutTarget', val); setGamutDropOpen(false); }}
                       style={{
                         padding: '8px 12px', cursor: 'pointer',
                         fontSize: 14, fontWeight: 500,
@@ -484,13 +485,13 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
           {/* Display Clipping Range toggle */}
           <div style={rowWithBorder}>
             <span style={labelStyle}>Display Clipping Range</span>
-            <Toggle on={showBoundary} onToggle={() => setShowBoundary(v => !v)} />
+            <Toggle on={showBoundary} onToggle={() => setShowBoundary(v => { localStorage.setItem('oklch_showBoundary', String(!v)); return !v; })} />
           </div>
 
           {/* GAMUT Correction toggle */}
           <div style={rowWithBorder}>
             <span style={labelStyle}>GAMUT Correction</span>
-            <Toggle on={clipToGamut} onToggle={() => setClipToGamut(v => !v)} />
+            <Toggle on={clipToGamut} onToggle={() => setClipToGamut(v => { localStorage.setItem('oklch_clipToGamut', String(!v)); return !v; })} />
           </div>
         </div>
 

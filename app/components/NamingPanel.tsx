@@ -5,7 +5,7 @@ import { useColorStore } from '@/store/colorStore';
 import { DndContext, closestCenter, DragEndEvent, useSensor, useSensors, MouseSensor, TouchSensor } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import SectionEditPopup, { PanelSectionKey } from '@/app/components/onboarding/SectionEditPopup';
+import { PanelSectionKey } from '@/app/components/onboarding/SectionEditPopup';
 
 type SectionKey = PanelSectionKey;
 
@@ -19,6 +19,10 @@ const SECTIONS: { key: SectionKey; label: string; desc: string; isSingle?: boole
   { key: 'component', label: 'Component', desc: '2단계 alias 레이어에 적용' },
 ];
 
+function sanitizeTag(raw: string) {
+  return raw.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
+
 interface NamingPanelProps {
   showNext?: boolean;
   onNext?: () => void;
@@ -29,11 +33,13 @@ interface SortableCardProps {
   sec: (typeof SECTIONS)[number];
   isOn: boolean;
   tags: string[];
+  isOpen: boolean;
   onToggle: () => void;
-  onEdit: (e: React.MouseEvent) => void;
+  onOpenDrawer: () => void;
+  onCloseDrawer: () => void;
 }
 
-function SortableCard({ sec, isOn, tags, onToggle, onEdit }: SortableCardProps) {
+function SortableCard({ sec, isOn, tags, isOpen, onToggle, onOpenDrawer, onCloseDrawer }: SortableCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sec.key });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -42,53 +48,230 @@ function SortableCard({ sec, isOn, tags, onToggle, onEdit }: SortableCardProps) 
     zIndex: isDragging ? 10 : undefined,
   };
 
+  // Drawer local state (mirrors SectionEditPopup)
+  const namingNamespaceFromStore = useColorStore(s => s.namingNamespace);
+  const namingValuesFromStore = useColorStore(s => s.namingValues);
+  const namingDescriptions = useColorStore(s => s.namingDescriptions);
+  const setNamingNamespace = useColorStore(s => s.setNamingNamespace);
+  const setNamingValue = useColorStore(s => s.setNamingValue);
+  const setNamingDescription = useColorStore(s => s.setNamingDescription);
+  const setDefaultNamingNamespace = useColorStore(s => s.setDefaultNamingNamespace);
+  const setDefaultNamingValues = useColorStore(s => s.setDefaultNamingValues);
+  const setDefaultNamingDescriptions = useColorStore(s => s.setDefaultNamingDescriptions);
+
+  const [localEdit, setLocalEdit] = useState<string | string[]>(
+    sec.isSingle ? namingNamespaceFromStore : (namingValuesFromStore[sec.key] ?? [])
+  );
+  const [localDesc, setLocalDesc] = useState(namingDescriptions[sec.key] ?? '');
+  const [inputVal, setInputVal] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
+  const openDrawer = () => {
+    setLocalEdit(sec.isSingle ? namingNamespaceFromStore : (namingValuesFromStore[sec.key] ?? []));
+    setLocalDesc(namingDescriptions[sec.key] ?? '');
+    setInputVal('');
+    onOpenDrawer();
+  };
+
+  const handleSave = () => {
+    if (sec.isSingle) {
+      setNamingNamespace(localEdit as string);
+    } else {
+      setNamingValue(sec.key, (localEdit as string[]) ?? namingValuesFromStore[sec.key] ?? []);
+    }
+    if (localDesc !== namingDescriptions[sec.key]) {
+      setNamingDescription(sec.key, localDesc);
+    }
+    onCloseDrawer();
+  };
+
+  const handleReset = () => {
+    const defaults = useColorStore.getState();
+    if (sec.key === 'namespace') {
+      setLocalEdit(defaults.defaultNamingNamespace);
+    } else {
+      setLocalEdit([...(defaults.defaultNamingValues[sec.key] ?? [])]);
+    }
+    setLocalDesc(defaults.defaultNamingDescriptions[sec.key] ?? '');
+  };
+
+  const handleSetAsDefault = () => {
+    if (sec.isSingle) {
+      setNamingNamespace(localEdit as string);
+      setDefaultNamingNamespace(localEdit as string);
+    } else {
+      setNamingValue(sec.key, (localEdit as string[]) ?? []);
+      setDefaultNamingValues(sec.key, (localEdit as string[]) ?? []);
+    }
+    setNamingDescription(sec.key, localDesc);
+    setDefaultNamingDescriptions(sec.key, localDesc);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
+  };
+
+  const handleAddTag = () => {
+    if (sec.isSingle) return;
+    const val = sanitizeTag(inputVal);
+    if (!val) return;
+    const list = (localEdit as string[]) ?? [];
+    if (list.includes(val)) return;
+    setLocalEdit([...list, val]);
+    setInputVal('');
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    if (sec.isSingle) return;
+    const list = (localEdit as string[]) ?? [];
+    setLocalEdit(list.filter(v => v !== tag));
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="pt-[8px] px-5 pb-[2px] bg-white cursor-grab active:cursor-grabbing transition-all flex flex-col border-b border-[#dddddf]"
+      className="bg-white border-b border-[#dddddf] flex flex-col"
       {...attributes}
       {...listeners}
     >
-      {/* Header: Label + Toggle */}
-      <div className="flex items-center justify-between mb-[-6px]">
-        <h3 className={`font-bold text-[15px] text-[#333] transition-opacity ${!isOn ? 'opacity-30' : ''}`}>{sec.label}</h3>
-        <button
-          type="button"
-          onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
-          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={e => { e.stopPropagation(); onToggle(); }}
-          className="flex items-center justify-center translate-y-[10px]"
-          aria-label={isOn ? 'Disable' : 'Enable'}
-        >
-          <div className="relative w-5 h-8 shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon-switch2-on.svg"  alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 transition-opacity duration-300 ${isOn ? 'opacity-100' : 'opacity-0'}`} />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon-switch2-off.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${isOn ? 'opacity-0' : 'opacity-100'}`} />
+      {/* Card header */}
+      <div className="pt-[8px] px-5 pb-[2px] cursor-grab active:cursor-grabbing flex flex-col">
+        {/* Header: Label + Toggle */}
+        <div className="flex items-center justify-between mb-[-6px]">
+          <h3 className={`font-bold text-[15px] text-[#333] transition-opacity ${!isOn ? 'opacity-30' : ''}`}>{sec.label}</h3>
+          <button
+            type="button"
+            onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
+            onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={e => { e.stopPropagation(); onToggle(); }}
+            className="flex items-center justify-center translate-y-[10px]"
+            aria-label={isOn ? 'Disable' : 'Enable'}
+          >
+            <div className="relative w-5 h-8 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon-switch2-on.svg"  alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 transition-opacity duration-300 ${isOn ? 'opacity-100' : 'opacity-0'}`} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon-switch2-off.svg" alt="" width={20} height={32} aria-hidden="true" className={`block w-5 h-8 absolute top-0 left-0 transition-opacity duration-300 ${isOn ? 'opacity-0' : 'opacity-100'}`} />
+            </div>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className={`flex flex-col flex-1 transition-opacity ${!isOn ? 'opacity-30' : ''}`}>
+          <p className="text-[12px] text-[#999] mb-[14px] leading-relaxed">{sec.desc}</p>
+
+          {/* Tags — shared area, click to open drawer */}
+          <div
+            className="flex flex-wrap gap-[6px] pb-[18px]"
+            onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
+            onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={e => { e.stopPropagation(); if (!isOpen) openDrawer(); }}
+          >
+            {(isOpen ? (sec.isSingle ? (localEdit ? [localEdit as string] : []) : (localEdit as string[])) : tags).map(tag => (
+              <span key={tag} className="inline-flex items-center gap-1.5 px-3 h-[28px] bg-[#333] text-[12px] font-medium text-[#fff] rounded-[8px] cursor-pointer">
+                {tag}
+                {isOpen && !sec.isSingle && (
+                  <button
+                    onPointerDown={e => e.stopPropagation()}
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={e => { e.stopPropagation(); handleRemoveTag(tag); }}
+                    className="text-[10px] text-[#aaa] hover:text-[#fff] leading-none"
+                  >✕</button>
+                )}
+              </span>
+            ))}
           </div>
-        </button>
+        </div>
       </div>
 
-      {/* Content */}
-      <div className={`flex flex-col flex-1 transition-opacity ${!isOn ? 'opacity-30' : ''}`}>
-        <p className="text-[12px] text-[#999] mb-[14px] leading-relaxed">{sec.desc}</p>
+      {/* Drawer */}
+      <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <div className="overflow-hidden">
+          <div className="bg-white px-5 pt-0 pb-[30px] space-y-4 relative">
+            {/* Input row */}
+            {sec.isSingle ? (
+              <input
+                type="text"
+                value={localEdit as string}
+                onPointerDown={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
+                onChange={e => setLocalEdit(e.target.value)}
+                className="w-full h-9 border border-[#dddddd] rounded-[10px] px-3 text-[13px] font-normal text-[#333] outline-none focus:border-[#808088] bg-white"
+              />
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputVal}
+                  onPointerDown={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  onChange={e => setInputVal(e.target.value)}
+                  onKeyPress={e => e.key === 'Enter' && handleAddTag()}
+                  placeholder="값 추가"
+                  className="flex-1 h-9 border border-[#dddddd] rounded-[10px] px-3 text-[13px] font-normal text-[#333] outline-none focus:border-[#808088] bg-white"
+                />
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); handleAddTag(); }}
+                  className="h-9 px-4 bg-[#666] rounded-[10px] text-[13px] font-medium text-white hover:bg-[#555] transition-colors"
+                >추가</button>
+              </div>
+            )}
 
-        {/* Tags — click to edit */}
-        <button
-          type="button"
-          onPointerDown={e => { e.preventDefault(); e.stopPropagation(); }}
-          onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
-          onClick={e => { e.stopPropagation(); onEdit(e); }}
-          title="Edit Token"
-          className="flex flex-wrap gap-[6px] pb-[18px] text-left cursor-pointer"
-        >
-          {tags.map(tag => (
-            <span key={tag} className="inline-flex items-center px-3 h-[28px] bg-[#333] text-[12px] font-medium text-[#fff] rounded-[8px]">
-              {tag}
-            </span>
-          ))}
-        </button>
+            {/* Description */}
+            <div>
+              <label className="block text-[12px] font-semibold mb-1.5 text-[#333]">설명</label>
+              <input
+                type="text"
+                value={localDesc}
+                onPointerDown={e => e.stopPropagation()}
+                onMouseDown={e => e.stopPropagation()}
+                onChange={e => setLocalDesc(e.target.value)}
+                placeholder="이 섹션의 설명을 입력하세요"
+                className="w-full h-9 border border-[#dddddd] rounded-[10px] px-3 text-[13px] font-normal text-[#333] outline-none focus:border-[#808088] bg-white"
+              />
+            </div>
+
+            {/* Footer buttons */}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex gap-2">
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); handleReset(); }}
+                  className="h-9 px-4 bg-white border border-[#e0e0e0] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#f5f5f5] transition-colors"
+                >Reset</button>
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); handleSetAsDefault(); }}
+                  className="h-9 px-4 bg-[#e8eeff] rounded-[10px] text-[13px] font-medium text-[#4a7cf5] hover:bg-[#d8e4ff] transition-colors"
+                >Set Default</button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); onCloseDrawer(); }}
+                  className="w-[90px] h-9 bg-white border border-[#e0e0e0] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#f5f5f5] transition-colors"
+                >Cancel</button>
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); handleSave(); }}
+                  className="w-[90px] h-9 bg-[#666] rounded-[10px] text-[13px] font-medium text-white hover:bg-[#555] transition-colors"
+                >Save</button>
+              </div>
+            </div>
+
+            {/* Toast */}
+            {showToast && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-[#333] text-white rounded-lg text-sm z-10">
+                기본값으로 설정되었습니다
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -102,8 +285,7 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
   const setNamingOrder     = useColorStore(s => s.setNamingOrder);
   const setNamingEnabled   = useColorStore(s => s.setNamingEnabled);
 
-  const [editingKey, setEditingKey] = useState<SectionKey | null>(null);
-  const [editingPos, setEditingPos] = useState<{ x: number; y: number } | null>(null);
+  const [openKey, setOpenKey] = useState<SectionKey | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 1 } }),
@@ -137,13 +319,8 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
   return (
     <div className="relative flex flex-col h-full bg-white overflow-hidden">
 
-      {/* Header */}
-      <div className="flex items-center justify-between shrink-0 h-[56px] bg-[#606070] px-[15px]">
-        <span className="font-semibold text-[16px] text-white">Token Naming Rules</span>
-      </div>
-
       {/* Preview row */}
-      <div className="flex items-center justify-between shrink-0 h-[40px] bg-[#f5f5f5] border-b border-[#dddddf] px-[15px]">
+      <div className="flex items-center justify-between shrink-0 h-[40px] bg-white border-b border-[#dddddf] px-[15px]">
         <span className="font-semibold text-[13px] text-[#999]">Form</span>
         <span className="text-[13px] text-[#333] font-mono truncate ml-4 text-right">{previewStr || '—'}</span>
       </div>
@@ -168,8 +345,10 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
                     sec={sec}
                     isOn={isOn}
                     tags={tags}
+                    isOpen={openKey === sec.key}
                     onToggle={() => toggleEnabled(sec.key)}
-                    onEdit={(e) => { setEditingKey(sec.key); setEditingPos({ x: e.clientX, y: e.clientY }); }}
+                    onOpenDrawer={() => setOpenKey(sec.key)}
+                    onCloseDrawer={() => setOpenKey(null)}
                   />
                 );
               })}
@@ -189,20 +368,6 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
           </div>
         )}
       </div>
-
-      {/* Section edit popup */}
-      {editingKey && (() => {
-        const sec = SECTIONS.find(s => s.key === editingKey)!;
-        return (
-          <SectionEditPopup
-            sectionKey={editingKey}
-            label={sec.label}
-            isSingle={sec.isSingle}
-            onClose={() => setEditingKey(null)}
-            anchorPos={editingPos ?? undefined}
-          />
-        );
-      })()}
     </div>
   );
 }

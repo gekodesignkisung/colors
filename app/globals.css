@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* Hide number input spin buttons */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -15,6 +20,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+  scrollbar-gutter: stable;
 }
 
 body {

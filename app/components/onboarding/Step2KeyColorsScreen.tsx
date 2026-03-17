@@ -1,4 +1,4 @@
-import Step2BaseColorInput from '../Step2BaseColorInput';
+import Step2BaseColorInput from './Step2BaseColorInput';
 
 type Props = {
   onPrev: () => void;

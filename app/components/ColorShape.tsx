@@ -26,7 +26,7 @@ interface ColorShapeProps {
 }
 
 export function ColorShape({ color, size = 24, className, borderColor, borderWidth = 1, radius = '50%' }: ColorShapeProps) {
-  const autoBorder = !borderColor && isBrighterThanThreshold(color) ? '#cccccc' : undefined;
+  const autoBorder = !borderColor && isBrighterThanThreshold(color) ? '#dddddd' : undefined;
   const resolvedBorder = borderColor ?? autoBorder;
 
   return (

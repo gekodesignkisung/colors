@@ -209,13 +209,13 @@ export default function SectionEditPopup({
           <div className="flex gap-2.5">
             <button
               onClick={handleReset}
-              className="h-9 px-4 bg-[#f5f5f5] rounded-[10px] text-[14px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
+              className="h-9 px-4 bg-[#f5f5f5] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
             >
               Reset
             </button>
             <button
               onClick={handleSetAsDefault}
-              className="h-9 px-4 bg-[#e8eeff] rounded-[10px] text-[14px] font-medium text-[#4a7cf5] hover:bg-[#d8e4ff] transition-colors"
+              className="h-9 px-4 bg-[#e8eeff] rounded-[10px] text-[13px] font-medium text-[#4a7cf5] hover:bg-[#d8e4ff] transition-colors"
             >
               Set Default
             </button>
@@ -223,13 +223,13 @@ export default function SectionEditPopup({
           <div className="flex gap-2.5">
             <button
               onClick={handleCancel}
-              className="h-9 w-[90px] bg-[#f5f5f5] rounded-[10px] text-[14px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
+              className="h-9 w-[90px] bg-[#f5f5f5] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="h-9 w-[90px] bg-[#666] rounded-[10px] text-[14px] font-medium text-white hover:bg-[#555] transition-colors"
+              className="h-9 w-[90px] bg-[#666] rounded-[10px] text-[13px] font-medium text-white hover:bg-[#555] transition-colors"
             >
               Save
             </button>

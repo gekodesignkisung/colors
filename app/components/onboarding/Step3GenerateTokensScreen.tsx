@@ -400,22 +400,18 @@ function SortableCard({
             e.stopPropagation();
             onToggle(e);
           }}
-          className="flex items-center justify-center translate-y-[10px]"
+          className="flex items-center justify-center translate-y-[10px] hover:scale-[1.2] transition-transform duration-200"
           aria-label={isOn ? 'Disable' : 'Enable'}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={isOn ? '/icon-switch2-on.svg' : '/icon-switch2-off.svg'}
-            alt=""
-            width={20}
-            height={32}
-            aria-hidden="true"
-          />
+          <div className="relative w-5 h-8">
+            <img src="/icon-switch2-on.svg" alt="" width={20} height={32} className={`absolute inset-0 transition-opacity duration-300 ${isOn ? 'opacity-100' : 'opacity-0'}`} />
+            <img src="/icon-switch2-off.svg" alt="" width={20} height={32} className={`absolute inset-0 transition-opacity duration-300 ${isOn ? 'opacity-0' : 'opacity-100'}`} />
+          </div>
         </button>
       </div>
 
       {/* Content (dimmed when off) */}
-      <div className={`flex flex-col flex-1 transition-opacity ${!isOn ? 'opacity-30' : ''}`}>
+      <div className={`flex flex-col flex-1 transition-opacity ${!isOn ? 'opacity-30 pointer-events-none' : ''}`}>
       {/* Description */}
       <p className="text-[12px] text-[#999] mb-[14px] leading-relaxed">
         {namingDescriptions[sec.key] || sec.desc}

@@ -357,7 +357,7 @@ export default function KeyColorEditPopup({
           <button
             type="button"
             onClick={handleReset}
-            className="h-9 px-[10px] bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
+            className="h-9 px-[10px] bg-[#f5f5f5] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
           >
             Reset
           </button>
@@ -366,7 +366,7 @@ export default function KeyColorEditPopup({
           <button
             type="button"
             onClick={handleSetAsDefault}
-            className="h-9 px-[10px] bg-[#eef5ff] rounded-[10px] text-[15px] font-semibold text-[#7490e7] hover:bg-[#ddeaff] transition-colors"
+            className="h-9 px-[10px] bg-[#eef5ff] rounded-[10px] text-[13px] font-medium text-[#7490e7] hover:bg-[#ddeaff] transition-colors"
           >
             Set Default
           </button>
@@ -376,14 +376,14 @@ export default function KeyColorEditPopup({
         <button
           type="button"
           onClick={handleCancel}
-          className="w-[125px] h-9 bg-[#f5f5f5] rounded-[10px] text-[15px] font-semibold text-[#808088] hover:bg-[#eee] transition-colors"
+          className="w-[125px] h-9 bg-[#f5f5f5] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#eee] transition-colors"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleSave}
-          className="w-[125px] h-9 bg-[#666666] rounded-[10px] text-[15px] font-semibold text-white hover:bg-[#555] transition-colors"
+          className="w-[125px] h-9 bg-[#666666] rounded-[10px] text-[13px] font-medium text-white hover:bg-[#555] transition-colors"
         >
           Save
         </button>

@@ -274,7 +274,7 @@ export default function TokenEditPopup() {
           {/* Col 1: Swatch */}
           <div className="bg-white flex flex-col items-center w-[168px] shrink-0 p-6 gap-3">
             <div className="w-[120px] h-[120px]">
-              <ColorShape color={previewColor} size={120} radius={8} />
+              <ColorShape color={previewColor} size={120} radius={60} />
             </div>
             <div className="flex flex-col items-center gap-0.5 w-full">
               {useOklch ? (() => {
@@ -307,7 +307,7 @@ export default function TokenEditPopup() {
                     <ColorShape
                       color={source === 'random' ? randomSourceColor : (effectiveBaseColors[source as keyof typeof effectiveBaseColors] ?? '#cccccc')}
                       size={12}
-                      radius={3}
+                      radius={6}
                     />
                   </span>
                   <select
@@ -453,19 +453,19 @@ export default function TokenEditPopup() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between h-[80px] px-[30px] shrink-0 border-t border-[#f0f0f0]">
+        <div className="flex items-center justify-between shrink-0 border-t border-[#f0f0f0] p-[24px]">
           <div className="flex gap-[10px]">
             <button
               type="button"
               onClick={handleReset}
-              className="h-9 px-[10px] bg-[#f5f5f5] text-[15px] font-semibold text-[#808088] hover:bg-[#eee]"
+              className="h-9 px-[10px] bg-[#f5f5f5] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#eee]"
             >
               Reset
             </button>
             <button
               type="button"
               onClick={handleSetAsDefault}
-              className="h-9 px-[10px] bg-[#eef5ff] text-[15px] font-semibold text-[#7490e7] hover:bg-[#ddeaff]"
+              className="h-9 px-[10px] bg-[#eef5ff] rounded-[10px] text-[13px] font-medium text-[#7490e7] hover:bg-[#ddeaff]"
             >
               Set Default
             </button>
@@ -474,14 +474,14 @@ export default function TokenEditPopup() {
             <button
               type="button"
               onClick={() => setSelectedToken(null)}
-              className="w-[100px] h-9 bg-[#f5f5f5] text-[15px] font-semibold text-[#808088] hover:bg-[#eee]"
+              className="w-[90px] h-9 bg-[#f5f5f5] rounded-[10px] text-[13px] font-medium text-[#808088] hover:bg-[#eee]"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleApply}
-              className="w-[100px] h-9 bg-[#666666] text-[15px] font-semibold text-white hover:bg-[#555]"
+              className="w-[90px] h-9 bg-[#666666] rounded-[10px] text-[13px] font-medium text-white hover:bg-[#555]"
             >
               Save
             </button>

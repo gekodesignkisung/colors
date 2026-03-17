@@ -16,6 +16,7 @@ export default function Home() {
   const selectedTokenId = useColorStore(s => s.selectedTokenId);
   const setProjectName = useColorStore(s => s.setProjectName);
   const projectName = useColorStore(s => s.projectName);
+  const [leftTab, setLeftTab] = useState<'colors' | 'tokens'>('colors');
 
 
   // onboarding steps:
@@ -81,17 +82,15 @@ export default function Home() {
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#dddddf', gap: 1 }}>
-      {/* 4 Pillars in Main Workspace */}
-      <aside style={{ flexShrink: 0, width: 300 }} className="flex flex-col bg-white overflow-hidden opacity-100">
-        <div className="flex-1 overflow-auto opacity-100">
-          <BaseColorInput introStep={introStep} onNewProject={() => setIntroStep(-1)} />
-        </div>
-      </aside>
-
-      <aside style={{ flexShrink: 0, width: 400 }} className="flex flex-col bg-white overflow-hidden opacity-100">
-        <div className="flex-1 overflow-auto opacity-100">
-          <NamingPanel />
-        </div>
+      {/* Left panel — Key Colors + Token Rules tabs */}
+      <aside style={{ flexShrink: 0, width: 480 }} className="flex flex-col bg-white overflow-hidden">
+        <BaseColorInput
+          introStep={introStep}
+          onNewProject={() => setIntroStep(-1)}
+          leftTab={leftTab}
+          setLeftTab={setLeftTab}
+          namingPanel={<NamingPanel />}
+        />
       </aside>
       {/* Middle panel — Generated Colors (360px) */}
       <aside
