@@ -63,7 +63,7 @@ function ChannelInput({ label, value, min, max, onChange }: {
           type="number" min={min} max={max} value={local}
           onChange={e => { active.current = true; setLocal(e.target.value); }}
           onBlur={e => commit(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value); }}
+          onKeyDown={e => { if (e.key === 'Enter') { commit((e.target as HTMLInputElement).value); (e.target as HTMLInputElement).blur(); } }}
           style={{
             width: '100%', background: 'transparent', border: 'none', outline: 'none',
             fontSize: 13, fontWeight: 600, color: '#333',

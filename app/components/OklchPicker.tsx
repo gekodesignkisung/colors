@@ -437,7 +437,7 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
 
           {/* GAMUT row */}
           <div style={rowStyle}>
-            <span style={labelStyle}>GAMUT</span>
+            <span style={labelStyle} title="특정 시스템이나 장치가 표현할 수 있는 색의 전체 범위">GAMUT</span>
             <div style={{ position: 'relative' }} className="picker-dropdown">
               <div
                 onClick={() => setGamutDropOpen(v => !v)}
@@ -484,13 +484,13 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
 
           {/* Display Clipping Range toggle */}
           <div style={rowWithBorder}>
-            <span style={labelStyle}>Display Clipping Range</span>
+            <span style={labelStyle} title="팔레트에서 GAMUT 경계선 표시">Display Clipping Range</span>
             <Toggle on={showBoundary} onToggle={() => setShowBoundary(v => { localStorage.setItem('oklch_showBoundary', String(!v)); return !v; })} />
           </div>
 
           {/* GAMUT Correction toggle */}
           <div style={rowWithBorder}>
-            <span style={labelStyle}>GAMUT Correction</span>
+            <span style={labelStyle} title="경계선 밖의 색을 표현 가능한 색으로 보정">GAMUT Correction</span>
             <Toggle on={clipToGamut} onToggle={() => setClipToGamut(v => { localStorage.setItem('oklch_clipToGamut', String(!v)); return !v; })} />
           </div>
         </div>
@@ -576,6 +576,7 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
             <div style={{
               fontSize: 11, fontWeight: 500,
               borderRadius: 6, padding: '5px 10px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               ...(isCorrected
                 ? { color: '#4f86c6', background: '#eff6ff', border: '1px solid #bfdbfe' }
                 : { color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a' }
@@ -591,7 +592,12 @@ export default function OklchPicker({ color, onChange, onClose, anchorPos }: Okl
                   }}>!</span>
                   {`Corrected to ${gamutTarget === 'srgb' ? 'sRGB' : 'Display P3'} boundary`}
                 </span>
-              ) : `⚠ Out of ${gamutTarget === 'srgb' ? 'sRGB' : 'Display P3'} gamut`}
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>⚠</span>
+                  {`Out of ${gamutTarget === 'srgb' ? 'sRGB' : 'Display P3'} gamut`}
+                </span>
+              )}
             </div>
           )}
         </div>

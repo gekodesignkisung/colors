@@ -355,7 +355,7 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
                 <div key={key} className="border-b border-[#dddddf]">
                   {/* Card row — original design */}
                   <div
-                    className="flex items-center min-h-[64px] w-full px-5 py-[18px]"
+                    className="flex items-center min-h-[44px] w-full px-5 py-[8px]"
                   >
                     <div className={`flex items-center flex-1 transition-opacity duration-300 ${enabled ? '' : 'opacity-30'}`}>
                       {/* Swatch */}
@@ -366,7 +366,7 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
                         className={`shrink-0 transition-transform ${enabled ? 'hover:scale-110' : ''}`}
                         title="클릭하여 색상 선택"
                       >
-                        <ColorShape color={!enabled ? '#ffffff' : raw} size={80} />
+                        <ColorShape color={!enabled ? '#ffffff' : raw} size={60} />
                       </button>
                       {/* Label + value — hover only on info area */}
                       <button
@@ -374,7 +374,7 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
                         onClick={() => openDrawer(key)}
                         disabled={!enabled}
                         title="Click to configure"
-                        className={`flex flex-col gap-[2px] flex-1 min-w-0 text-left border-0 bg-transparent py-2 rounded-[10px] hover:bg-[#f5f5f5] transition-colors ml-[20px] px-3 ${enabled ? 'cursor-pointer' : 'pointer-events-none'}`}
+                        className={`flex flex-col gap-[2px] justify-center flex-1 min-w-0 text-left border-0 bg-transparent py-2 rounded-[10px] hover:bg-[#f5f5f5] transition-colors ml-[20px] px-3 ${enabled ? 'cursor-pointer' : 'pointer-events-none'}`}
                       >
                         <span className="text-[18px] font-semibold text-[#333]">{label}</span>
                         <div className={`flex flex-col gap-0 transition-opacity duration-300 ${enabled ? 'opacity-100' : 'opacity-0'}`}>
@@ -665,7 +665,7 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
         <button
           type="button"
           onClick={randomizeColors}
-          className={`shrink-0 w-[80px] h-[80px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] flex items-center justify-center cursor-pointer hover:opacity-75 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className={`shrink-0 w-[60px] h-[60px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] flex items-center justify-center cursor-pointer hover:opacity-75 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-generate.svg" alt="" width={22} height={22} aria-hidden="true" />
