@@ -83,7 +83,7 @@ export default function Home() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#dddddf', gap: 1 }}>
       {/* Left panel — Key Colors + Token Rules tabs */}
-      <aside style={{ flexShrink: 0, width: 480 }} className="flex flex-col bg-white overflow-hidden">
+      <aside style={{ flexShrink: 0, width: 440 }} className="flex flex-col bg-white overflow-hidden">
         <BaseColorInput
           introStep={introStep}
           onNewProject={() => setIntroStep(-1)}
@@ -94,7 +94,7 @@ export default function Home() {
       </aside>
       {/* Middle panel — Generated Colors (360px) */}
       <aside
-        style={{ flexShrink: 0, width: 360 }}
+        style={{ flexShrink: 0, width: 400 }}
         className="flex flex-col bg-white overflow-hidden transition-all duration-300 ease-in-out w-[360px] opacity-100"
       >
         <div className="flex-1 overflow-auto transition-opacity duration-300 opacity-100">

@@ -286,6 +286,7 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
   const setNamingEnabled   = useColorStore(s => s.setNamingEnabled);
 
   const [openKey, setOpenKey] = useState<SectionKey | null>(null);
+  const [toast, setToast] = useState(false);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 1 } }),
@@ -301,9 +302,19 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
     }
   };
 
+  const showToast = () => {
+    setToast(true);
+    setTimeout(() => setToast(false), 2500);
+  };
+
   const toggleEnabled = (key: SectionKey) => {
     const next = new Set(namingEnabled);
-    next.has(key) ? next.delete(key) : next.add(key);
+    if (next.has(key)) {
+      if (next.size <= 1) { showToast(); return; }
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
     setNamingEnabled([...next]);
   };
 
@@ -318,6 +329,13 @@ export default function NamingPanel({ showNext, onNext, scroll = true }: NamingP
 
   return (
     <div className="relative flex flex-col h-full bg-white overflow-hidden">
+
+      {/* Toast */}
+      {toast && (
+        <div className="absolute bottom-[20px] left-1/2 -translate-x-1/2 z-[9999] bg-[#333] text-white text-[12px] font-medium px-4 py-2 rounded-[10px] shadow-lg whitespace-nowrap pointer-events-none">
+          최소 1개 이상의 네이밍 그룹이 필요합니다.
+        </div>
+      )}
 
       {/* Preview row */}
       <div className="flex items-center justify-between shrink-0 h-[40px] bg-white border-b border-[#dddddf] px-[15px]">

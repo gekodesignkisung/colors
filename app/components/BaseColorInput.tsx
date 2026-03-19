@@ -78,6 +78,7 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
   const [pickerKey, setPickerKey] = useState<string | null>(null);
   const [pickerPos, setPickerPos] = useState<{ x: number; y: number } | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -232,13 +233,44 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between shrink-0 h-14 bg-[#404050] px-[15px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-opencolor.svg" alt="OpenColor" height={30} />
+      <div className="flex items-center shrink-0 h-14 bg-[#404050] px-[15px]">
+        {/* Menu button */}
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            title="메뉴"
+            onClick={() => {
+                const rect = menuRef.current?.getBoundingClientRect();
+                if (rect) setMenuPos({ x: rect.left, y: rect.bottom });
+                setShowMenu(prev => !prev);
+              }}
+            className="flex items-center justify-center w-8 h-8 hover:opacity-70 transition-opacity"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-menu.svg" alt="" width={30} height={30} aria-hidden="true" />
+          </button>
 
-        {/* Tab menu */}
+          {/* Dropdown */}
+          {showMenu && (
+            <div className="fixed w-[180px] bg-white rounded-[10px] shadow-[0px_8px_24px_0px_rgba(0,0,0,0.15)] overflow-hidden z-[9999]" style={{ left: menuPos.x, top: menuPos.y + 4 }}>
+              {menuItems.map((item, i) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                  className={`flex items-center w-full px-4 h-[44px] text-left text-[13px] font-medium text-[#333] hover:bg-[#f5f5f5] transition-colors
+                    ${i > 0 ? 'border-t border-[#f0f0f0]' : ''}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Tab menu — right */}
         {setLeftTab && (
-          <div className="flex items-end h-full">
+          <div className="flex items-end h-full ml-auto">
             <button
               type="button"
               onClick={() => setLeftTab('colors')}
@@ -255,36 +287,6 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
             </button>
           </div>
         )}
-
-        {/* Menu button */}
-        <div ref={menuRef} className="relative">
-          <button
-            type="button"
-            title="메뉴"
-            onClick={() => setShowMenu(prev => !prev)}
-            className="flex items-center justify-center w-8 h-8 hover:opacity-70 transition-opacity"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon-menu.svg" alt="" width={30} height={30} aria-hidden="true" />
-          </button>
-
-          {/* Dropdown */}
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-[180px] bg-white rounded-[10px] shadow-[0px_8px_24px_0px_rgba(0,0,0,0.15)] overflow-hidden z-50">
-              {menuItems.map((item, i) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={item.onClick}
-                  className={`flex items-center w-full px-4 h-[44px] text-left text-[13px] font-medium text-[#333] hover:bg-[#f5f5f5] transition-colors
-                    ${i > 0 ? 'border-t border-[#f0f0f0]' : ''}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Hidden file input for load */}
@@ -355,7 +357,7 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
                 <div key={key} className="border-b border-[#dddddf]">
                   {/* Card row — original design */}
                   <div
-                    className="flex items-center min-h-[44px] w-full px-5 py-[8px]"
+                    className="flex items-center h-[100px] w-full px-5 py-[10px] hover:bg-[#f5f5f5] transition-colors cursor-default"
                   >
                     <div className={`flex items-center flex-1 transition-opacity duration-300 ${enabled ? '' : 'opacity-30'}`}>
                       {/* Swatch */}
@@ -374,12 +376,12 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
                         onClick={() => openDrawer(key)}
                         disabled={!enabled}
                         title="Click to configure"
-                        className={`flex flex-col gap-[2px] justify-center flex-1 min-w-0 text-left border-0 bg-transparent py-2 rounded-[10px] hover:bg-[#f5f5f5] transition-colors ml-[20px] px-3 ${enabled ? 'cursor-pointer' : 'pointer-events-none'}`}
+                        className={`flex flex-col gap-[2px] justify-center flex-1 min-w-0 text-left border-0 bg-transparent rounded-[10px] transition-colors ml-[20px] px-3 h-[100px] ${enabled ? 'cursor-pointer' : 'pointer-events-none'}`}
                       >
                         <span className="text-[18px] font-semibold text-[#333]">{label}</span>
-                        <div className={`flex flex-col gap-0 transition-opacity duration-300 ${enabled ? 'opacity-100' : 'opacity-0'}`}>
+                        <div className={`flex flex-col gap-0 transition-all duration-300 overflow-hidden ${enabled ? 'opacity-100 max-h-[60px]' : 'opacity-0 max-h-0'}`}>
                           <span key={colorValue} className="text-[13px] font-medium text-[#999] whitespace-nowrap">{colorValue}</span>
-                          <span className={`text-[13px] font-medium text-[#333] whitespace-nowrap transition-opacity duration-300 ${formulaLabel && isAuto ? 'opacity-100' : 'opacity-0'}`}>{formulaLabel ?? '\u00A0'}</span>
+                          {formulaLabel && <span className={`text-[13px] font-medium text-[#333] whitespace-nowrap transition-all duration-300 overflow-hidden ${isAuto ? 'opacity-100 max-h-[20px]' : 'opacity-0 max-h-0'}`}>{formulaLabel}</span>}
                         </div>
                       </button>
                     </div>
@@ -660,12 +662,12 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
           </div>
 
           {/* Bottom toggles */}
-          <div className="flex items-center gap-[20px] p-[20px] pr-[40px]">
+          <div className="flex gap-[10px] p-[20px]">
         {/* Generate button */}
         <button
           type="button"
           onClick={randomizeColors}
-          className={`shrink-0 w-[60px] h-[60px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] flex items-center justify-center cursor-pointer hover:opacity-75 transition-opacity duration-300 ${globalGenerationMode === 'auto' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          className={`shrink-0 w-[60px] h-[60px] bg-white border border-[#999] rounded-full shadow-[0px_3px_6px_0px_rgba(0,0,0,0.1)] flex items-center justify-center cursor-pointer hover:scale-[1.1] transition-transform duration-200 self-end ${globalGenerationMode === 'auto' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon-generate.svg" alt="" width={22} height={22} aria-hidden="true" />
@@ -675,13 +677,13 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
         <button
           type="button"
           onClick={() => setGlobalGenerationMode(globalGenerationMode === 'auto' ? 'manual' : 'auto')}
-          className="flex flex-1 items-center gap-[20px] h-[60px] min-w-0 bg-[#f5f5f5] rounded-[10px] px-[15px] cursor-pointer border-0 text-left"
+          className="flex flex-1 items-center gap-[20px] h-[60px] bg-[#f5f5f5] rounded-[10px] pl-[15px] pr-[20px] ml-[20px] cursor-pointer border-0 text-left"
         >
           <div className="flex flex-col flex-1 min-w-0 justify-center">
             <p className="font-semibold text-[12px] text-[#333] leading-[1.3] whitespace-nowrap">Auto</p>
             <p className="font-semibold text-[12px] text-[#333] leading-[1.3] whitespace-nowrap">Generation</p>
           </div>
-          <div className="-rotate-90 shrink-0">
+          <div className="-rotate-90 shrink-0 hover:scale-[1.2] transition-transform duration-200">
             <div className={`w-[32px] h-[20px] rounded-full transition-colors duration-300 flex items-center px-[3px] ${globalGenerationMode === 'auto' ? 'bg-[#606070] justify-end' : 'bg-[#ccc] justify-start'}`}>
               <div className="w-[14px] h-[14px] rounded-full bg-white shadow-sm" />
             </div>
@@ -692,13 +694,13 @@ export default function BaseColorInput({ introStep, onNext, onNewProject, leftTa
         <button
           type="button"
           onClick={toggleOklch}
-          className="flex flex-1 items-center gap-[20px] h-[60px] min-w-0 bg-[#f5f5f5] rounded-[10px] px-[15px] cursor-pointer border-0 text-left"
+          className="flex flex-1 items-center gap-[20px] h-[60px] bg-[#f5f5f5] rounded-[10px] px-[15px] cursor-pointer border-0 text-left"
         >
           <div className="flex flex-col flex-1 min-w-0 justify-center">
             <p className="font-semibold text-[12px] text-[#333] leading-[1.3] whitespace-nowrap">OKLCH</p>
             <p className="font-semibold text-[12px] text-[#333] leading-[1.3] whitespace-nowrap">Color Space</p>
           </div>
-          <div className="-rotate-90 shrink-0">
+          <div className="-rotate-90 shrink-0 hover:scale-[1.2] transition-transform duration-200">
             <div className={`w-[32px] h-[20px] rounded-full transition-colors duration-300 flex items-center px-[3px] ${useOklch ? 'bg-[#606070] justify-end' : 'bg-[#ccc] justify-start'}`}>
               <div className="w-[14px] h-[14px] rounded-full bg-white shadow-sm" />
             </div>
